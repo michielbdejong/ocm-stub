@@ -25,6 +25,10 @@ const server = https.createServer({
                   },
                 }
 	    }));
+          } else if (req.url === '/ocm/shares') {
+            console.log('yes /ocm/shares');
+	    res.writeHead(201);
+	    res.end('Created');
           } else if (req.url === '/ocm-provider/') {
             console.log('yes /ocm-provider/');
             res.end(JSON.stringify({
