@@ -91,7 +91,7 @@ const server = https.createServer({
 			// }
 			console.log('deleting share', obj);
 			let provider = obj.sharedBy.split('@')[1].replace('\/', '/');
-			if (!provider.startWith('https://')) {
+			if (!provider.startsWith('https://')) {
 				provider = `https://${provider}`;
 			}
 			if (!provider.endsWith('/')) {
