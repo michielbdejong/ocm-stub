@@ -89,6 +89,7 @@ const server = https.createServer({
 			// 		"message":"File was unshared"
 			// 	}
 			// }
+			console.log('deleting share', obj);
 			let provider = obj.sharedBy.split('@').replace('\/', '/');
 			if (!provider.startWith('https://')) {
 				provider = `https://${provider}`;
