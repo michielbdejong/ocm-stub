@@ -2,9 +2,9 @@ const https = require('https');
 const fs = require('fs');
 
 const server = https.createServer({
-	key: fs.readFileSync('/etc/letsencrypt/live/nc2.pdsinterop.net/privkey.pem'),
-	cert: fs.readFileSync('/etc/letsencrypt/live/nc2.pdsinterop.net/cert.pem'),
-	ca: fs.readFileSync('/etc/letsencrypt/live/nc2.pdsinterop.net/chain.pem')
+	key: fs.readFileSync('/etc/letsencrypt/live/stub1.pdsinterop.net/privkey.pem'),
+	cert: fs.readFileSync('/etc/letsencrypt/live/stub1.pdsinterop.net/cert.pem'),
+	ca: fs.readFileSync('/etc/letsencrypt/live/stub1.pdsinterop.net/chain.pem')
 }, (req, res) => {
 	console.log(req.method, req.url, req.headers);
 	req.on('data', (chunk) => {
@@ -34,7 +34,7 @@ const server = https.createServer({
             res.end(JSON.stringify({
 	      enabled: true,
 	      apiVersion: "1.0-proposal1",
-		    "endPoint":"https://nc2.pdsinterop.net/ocm",
+		    "endPoint":"https://stub1.pdsinterop.net/ocm",
 		    "resourceTypes":[{
 			    "name":"file",
 			    "shareTypes":["user","group"],
