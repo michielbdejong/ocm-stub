@@ -1,6 +1,10 @@
 const https = require('https');
 const fs = require('fs');
 
+function sendHTML(res, text) {
+	res.end(`<!DOCTYPE html><html><head></head><body>${text}</body></html>`);
+}
+
 const server = https.createServer({
 	key: fs.readFileSync('/etc/letsencrypt/live/stub1.pdsinterop.net/privkey.pem'),
 	cert: fs.readFileSync('/etc/letsencrypt/live/stub1.pdsinterop.net/cert.pem'),
@@ -27,22 +31,22 @@ const server = https.createServer({
 		} else if (req.url === '/ocm/shares') {
 			console.log('yes /ocm/shares');
 	    res.writeHead(201);
-	    res.end('Created');
+	    sendHTML(res, 'Created');
 		} else if (req.url.startsWith('/publicLink')) {
 			console.log('yes publicLink');
-			res.end('yes publicLink');
+			sendHTML(res, 'yes publicLink');
 		} else if (req.url.startsWith('/shareWith')) {
 			console.log('yes shareWith');
-			res.end('yes shareWith');
+			sendHTML(res, 'yes shareWith');
 		} else if (req.url.startsWith('/acceptShare')) {
 			console.log('yes acceptShare');
-			res.end('yes acceptShare');
+			sendHTML(res, 'yes acceptShare');
 		} else if (req.url.startsWith('/deleteAcceptedShare')) {
 			console.log('yes deleteAcceptedShare');
-			res.end('yes deleteAcceptedShare');
+			sendHTML(res, 'yes deleteAcceptedShare');
 		} else {
 			console.log('not recognized');
-	    res.end('OK');
+	    sendHTML(res, 'OK');
 	  }
 	});
 });
