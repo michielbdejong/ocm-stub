@@ -11,27 +11,9 @@ const server = https.createServer({
 		console.log('CHUNK', chunk.toString());
 	});
 	req.on('end', () => {
-	  if (req.url === '//ocs-provider/') {
-            console.log('yes //ocs-provider/');
-            res.end(JSON.stringify({
-              version: 2,
-              services: {
-                FEDERATED_SHARING: {
-                  version: 1,
-                    endpoints: {
-                      share: "/ocs/v2.php/cloud/shares",
-                      webdav: "/public.php/webdav/"
-                    }
-                  },
-                }
-	    }));
-          } else if (req.url === '/ocm/shares') {
-            console.log('yes /ocm/shares');
-	    res.writeHead(201);
-	    res.end('Created');
-          } else if (req.url === '/ocm-provider/') {
-            console.log('yes /ocm-provider/');
-            res.end(JSON.stringify({
+	  if (req.url === '/ocm-provider/') {
+			console.log('yes /ocm-provider/');
+			res.end(JSON.stringify({
 	      enabled: true,
 	      apiVersion: "1.0-proposal1",
 		    "endPoint":"https://stub1.pdsinterop.net/ocm",
@@ -42,8 +24,24 @@ const server = https.createServer({
 			    }
 		    }]
 	    }));
-          } else {
-            console.log('not recognized');
+		} else if (req.url === '/ocm/shares') {
+			console.log('yes /ocm/shares');
+	    res.writeHead(201);
+	    res.end('Created');
+		} else if (req.url.startsWith('/publicLink')) {
+			console.log('yes publicLink');
+			res.end('yes publicLink');
+		} else if (req.url.startsWith('/shareWith')) {
+			console.log('yes shareWith');
+			res.end('yes shareWith');
+		} else if (req.url.startsWith('/acceptShare')) {
+			console.log('yes acceptShare');
+			res.end('yes acceptShare');
+		} else if (req.url.startsWith('/deleteAcceptedShare')) {
+			console.log('yes deleteAcceptedShare');
+			res.end('yes deleteAcceptedShare');
+		} else {
+			console.log('not recognized');
 	    res.end('OK');
 	  }
 	});
