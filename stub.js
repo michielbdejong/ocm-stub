@@ -11,14 +11,14 @@ const server = https.createServer({
 	key: fs.readFileSync('/etc/letsencrypt/live/stub1.pdsinterop.net/privkey.pem'),
 	cert: fs.readFileSync('/etc/letsencrypt/live/stub1.pdsinterop.net/cert.pem'),
 	ca: fs.readFileSync('/etc/letsencrypt/live/stub1.pdsinterop.net/chain.pem')
-}, async (req, res) => {
+}, (req, res) => {
 	console.log(req.method, req.url, req.headers);
 	let bodyIn = '';
 	req.on('data', (chunk) => {
 		console.log('CHUNK', chunk.toString());
 		bodyIn += chunk.toString();
 	});
-	req.on('end', () => {
+	req.on('end', async () => {
 	  if (req.url === '/ocm-provider/') {
 			console.log('yes /ocm-provider/');
 			res.end(JSON.stringify({
