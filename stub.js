@@ -108,6 +108,9 @@ const server = https.createServer({
 				sendHTML(res, `no deleteAcceptedShare - fail ${provider}ocm-provider/`);
 			}
 			sendHTML(res, 'yes deleteAcceptedShare');
+		} else if (req.url == '/') {
+			console.log('yes a/', obj);
+			sendHTML(res, 'yes /' + JSON.stringify(obj, null, 2));
 		} else {
 			console.log('not recognized');
 	    sendHTML(res, 'OK');
