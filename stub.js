@@ -1,5 +1,6 @@
 const https = require('https');
 const fs = require('fs');
+const fetch = require('fetch');
 
 function sendHTML(res, text) {
 	res.end(`<!DOCTYPE html><html><head></head><body>${text}</body></html>`);
