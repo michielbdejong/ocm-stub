@@ -24,11 +24,11 @@ async function getServerConfig(otherUser) {
 	console.log('fetching', `${otherServer}ocm-provider/`);
 	const configResult = await fetch(`${otherServer}ocm-provider/`);
 
-	return configResult.json();
+	return { config: configResult.json(), otherServer };
 }
 
 async function notifyProvider(obj, notif) {
-	const config = await getServerConfig(obj.sharedBy || obj.sender || obj.owner);
+	const { config } = await getServerConfig(obj.sharedBy || obj.sender || obj.owner);
 	const postRes = await fetch(`${config.endPoint}/notifications`, {
 		method: 'POST',
 		body: JSON.stringify(notif)
@@ -38,7 +38,7 @@ async function notifyProvider(obj, notif) {
 
 async function createShare(consumer) {
 	console.log('createShare', consumer);
-	const config = await getServerConfig(consumer);
+	const { config, otherServer } = await getServerConfig(consumer);
   console.log(config);
 	const postRes = await fetch(`${config.endPoint}/shares`, {
 		method: 'POST',
@@ -59,6 +59,7 @@ async function createShare(consumer) {
 		})
 	});
 	console.log('outgoing share created!', postRes.status, await postRes.text());
+	return otherServer;
 }
 const server = https.createServer({
 	key: fs.readFileSync(`/etc/letsencrypt/live/${SERVER_HOST}/privkey.pem`),
@@ -121,9 +122,14 @@ const server = https.createServer({
 			const urlObj = new URL(req.url, SERVER_ROOT);
 			if (urlObj.search.startsWith('?saveTo=')) {
 				console.log('creating share', urlObj.search);
-				await createShare(decodeURIComponent(urlObj.search).substring('?saveTo='.length));
+				const otherServerRoot = await createShare(decodeURIComponent(urlObj.search).substring('?saveTo='.length));
+				res.writeHead(301, {
+					location: otherServerRoot
+				});
+				sendHTML(res, `Redirecting you to ${otherServerRoot}`);
+			} else {
+				sendHTML(res, 'yes publicLink, saveTo?');
 			}
-			sendHTML(res, 'yes publicLink');
 		} else if (req.url.startsWith('/shareWith')) {
 			console.log('yes shareWith');
 			const urlObj = new URL(req.url, SERVER_ROOT);
