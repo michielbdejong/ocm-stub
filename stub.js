@@ -24,7 +24,7 @@ async function getServerConfig(otherUser) {
 	console.log('fetching', `${otherServer}ocm-provider/`);
 	const configResult = await fetch(`${otherServer}ocm-provider/`);
 
-	return { config: configResult.json(), otherServer };
+	return { config: await configResult.json(), otherServer };
 }
 
 async function notifyProvider(obj, notif) {
