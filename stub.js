@@ -92,6 +92,7 @@ const server = https.createServer({
 		} else if (req.url.startsWith('/acceptShare')) {
 			console.log('yes acceptShare');
 			try {
+				console.log('Creating notif to accept share, obj =', obj);
 				const notif = {
 					type: 'SHARE_ACCEPTED',
 					resourceType: obj.resourceType,
