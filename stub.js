@@ -38,7 +38,8 @@ async function notifyProvider(obj, notif) {
 
 async function createShare(consumer) {
 	console.log('createShare', consumer);
-	const config = getServerConfig(consumer);
+	const config = await getServerConfig(consumer);
+  console.log(config);
 	const postRes = await fetch(`${config.endPoint}/shares`, {
 		method: 'POST',
 		body: JSON.stringify({
