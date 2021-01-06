@@ -118,11 +118,13 @@ const server = https.createServer({
 	    sendHTML(res, 'Created');
 		} else if (req.url.startsWith('/publicLink')) {
 			console.log('yes publicLink');
+			const urlObj = new URL(req.url, SERVER_ROOT);
+			createShare(decodeURIComponent(urlObj.search).substring('?saveTo='.length));
 			sendHTML(res, 'yes publicLink');
 		} else if (req.url.startsWith('/shareWith')) {
 			console.log('yes shareWith');
 			const urlObj = new URL(req.url, SERVER_ROOT);
-			createShare(decodeURIComponent(urlObj.search).substring(1));
+			createShare(decodeURIComponent(urlObj.search).substring('?'.length));
 			sendHTML(res, 'yes shareWith');
 		} else if (req.url.startsWith('/acceptShare')) {
 			console.log('yes acceptShare');
