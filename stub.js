@@ -2,6 +2,10 @@ const https = require('https');
 const fs = require('fs');
 const fetch = require('node-fetch');
 
+const SERVER_HOST = 'stub1.pdsinterop.net';
+const SERVER_ROOT = `https://${SERVER_HOST}`;
+const USER = `admin@${SERVER_ROOT}`;
+
 function sendHTML(res, text) {
 	res.end(`<!DOCTYPE html><html><head></head><body>${text}</body></html>`);
 }
@@ -41,9 +45,9 @@ async function createShare(consumer) {
 			shareWith: consumer,
 			name: 'Test share from stub',
 			providerId: 42,
-			owner: 'admin@https://stub1.pdsinterop.net',
+			owner: USER,
 			ownerDisplayName: 'admin',
-			sender: 'admin@https://stub1.pdsinterop.net',
+			sender: USER,
 			senderDisplayName: 'admin',
 			shareType: 'user',
 			resourceType: 'file',
@@ -53,9 +57,9 @@ async function createShare(consumer) {
 	console.log('outgoing share created!', postRes.status, await postRes.text());
 }
 const server = https.createServer({
-	key: fs.readFileSync('/etc/letsencrypt/live/stub1.pdsinterop.net/privkey.pem'),
-	cert: fs.readFileSync('/etc/letsencrypt/live/stub1.pdsinterop.net/cert.pem'),
-	ca: fs.readFileSync('/etc/letsencrypt/live/stub1.pdsinterop.net/chain.pem')
+	key: fs.readFileSync(`/etc/letsencrypt/live/${SERVER_HOST}/privkey.pem`),
+	cert: fs.readFileSync(`/etc/letsencrypt/live/${SERVER_HOST}/cert.pem`),
+	ca: fs.readFileSync(`/etc/letsencrypt/live/${SERVER_HOST}/chain.pem`)
 }, async (req, res) => {
 	console.log(req.method, req.url, req.headers);
 	let bodyIn = '';
@@ -68,14 +72,15 @@ const server = https.createServer({
 			console.log('yes /ocm-provider/');
 			res.end(JSON.stringify({
 	      enabled: true,
-	      apiVersion: "1.0-proposal1",
-		    "endPoint":"https://stub1.pdsinterop.net/ocm",
-		    "resourceTypes":[{
-			    "name":"file",
-			    "shareTypes":["user","group"],
-			    "protocols":{"webdav":"/public.php/webdav/"
+	      apiVersion: '1.0-proposal1',
+		    endPoint: `${SERVER_ROOT}/ocm`,
+		    resourceTypes: [
+					{
+			      name: 'file',
+			      shareTypes: [ 'user', 'group' ],
+			      protocols: { webdav: '/webdav/' }
 			    }
-		    }]
+		    ]
 	    }));
 		} else if (req.url === '/ocm/shares') {
 			console.log('yes /ocm/shares');
@@ -112,7 +117,8 @@ const server = https.createServer({
 			sendHTML(res, 'yes publicLink');
 		} else if (req.url.startsWith('/shareWith')) {
 			console.log('yes shareWith');
-			createShare(req.url.query);
+			const urlObj = new URL(request.url, SERVER_ROOT);
+			createShare(urlObj.search.substring(1));
 			sendHTML(res, 'yes shareWith');
 		} else if (req.url.startsWith('/acceptShare')) {
 			console.log('yes acceptShare');
