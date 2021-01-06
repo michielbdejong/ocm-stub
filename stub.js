@@ -17,6 +17,7 @@ async function notifyProvider(notif) {
 	if (!provider.endsWith('/')) {
 		provider = `${provider}/`;
 	}
+	console.log('fetching', `${provider}ocm-provider/`);
 	const configResult = await fetch(`${provider}ocm-provider/`);
 
 	config = await configResult.json();
@@ -102,7 +103,8 @@ const server = https.createServer({
 				};
 				notifyProvider(notif);
 			} catch (e) {
-				sendHTML(res, `no acceptShare - fail ${provider}ocm-provider/`);
+				console.error(e);
+				sendHTML(res, `no acceptShare - fail`);
 			}
 			sendHTML(res, 'yes acceptShare');
 		} else if (req.url.startsWith('/deleteAcceptedShare')) {
