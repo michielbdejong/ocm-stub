@@ -10,7 +10,8 @@ function sendHTML(res, text) {
 let obj = {};
 
 async function notifyProvider(notif) {
-	let provider = obj.sharedBy.split('@')[1].replace('\/', '/');
+	const sharedBy = obj.sharedBy || obj.sender || obj.owner;
+	let provider = sharedBy.split('@')[1].replace('\/', '/');
 	if (!provider.startsWith('https://')) {
 		provider = `https://${provider}`;
 	}
