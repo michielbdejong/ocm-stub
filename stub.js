@@ -6,13 +6,32 @@ function sendHTML(res, text) {
 	res.end(`<!DOCTYPE html><html><head></head><body>${text}</body></html>`);
 }
 
+// singleton global, naively assume only one share exists at a time:
 let obj = {};
+
+async function notifyProvider(notif) {
+	let provider = obj.sharedBy.split('@')[1].replace('\/', '/');
+	if (!provider.startsWith('https://')) {
+		provider = `https://${provider}`;
+	}
+	if (!provider.endsWith('/')) {
+		provider = `${provider}/`;
+	}
+	const configResult = await fetch(`${provider}ocm-provider/`);
+
+	config = await configResult.json();
+	const postRes = await fetch(`${config.endPoint}/notifications`, {
+		method: 'POST',
+		body: JSON.stringify(notif)
+	});
+	console.log('notification sent!', postRes.status, await postRes.text());
+}
 
 const server = https.createServer({
 	key: fs.readFileSync('/etc/letsencrypt/live/stub1.pdsinterop.net/privkey.pem'),
 	cert: fs.readFileSync('/etc/letsencrypt/live/stub1.pdsinterop.net/cert.pem'),
 	ca: fs.readFileSync('/etc/letsencrypt/live/stub1.pdsinterop.net/chain.pem')
-}, (req, res) => {
+}, async (req, res) => {
 	console.log(req.method, req.url, req.headers);
 	let bodyIn = '';
 	req.on('data', (chunk) => {
@@ -60,7 +79,7 @@ const server = https.createServer({
 			// 		}
 			// 	}
 			// }
-			obj.id = obj.providerId;
+			// obj.id = obj.providerId;
 	    res.writeHead(201);
 	    sendHTML(res, 'Created');
 		} else if (req.url.startsWith('/publicLink')) {
@@ -71,11 +90,25 @@ const server = https.createServer({
 			sendHTML(res, 'yes shareWith');
 		} else if (req.url.startsWith('/acceptShare')) {
 			console.log('yes acceptShare');
+			try {
+				const notif = {
+					type: 'SHARE_ACCEPTED',
+					resourceType: obj.resourceType,
+					providerId: obj.providerId,
+					notification: {
+						sharedSecret: obj.protocol.options.sharedSecret,
+						message: 'Recipient accepted the share'
+					}
+				};
+				notifyProvider(notif);
+			} catch (e) {
+				sendHTML(res, `no acceptShare - fail ${provider}ocm-provider/`);
+			}
 			sendHTML(res, 'yes acceptShare');
 		} else if (req.url.startsWith('/deleteAcceptedShare')) {
 			console.log('yes deleteAcceptedShare');
 			const notif = {
-				type: 'SHARE_REMOVED',
+				type: 'SHARE_DECLINED',
 				message: 'I don\'t want to use this share anymore.',
 				id: obj.id,
 				createdAt: new Date()
@@ -91,21 +124,8 @@ const server = https.createServer({
 			// 	}
 			// }
 			console.log('deleting share', obj);
-			let provider = obj.sharedBy.split('@')[1].replace('\/', '/');
-			if (!provider.startsWith('https://')) {
-				provider = `https://${provider}`;
-			}
-			if (!provider.endsWith('/')) {
-				provider = `${provider}/`;
-			}
-			const configResult = await fetch(`${provider}ocm-provider/`);
-      try {
-				config = await configResult.json();
-				const postRes = await fetch(`${config.endPoint}/notifications`, {
-					method: 'POST',
-					body: JSON.stringify(notif)
-				});
-				console.log('deleted it!', postRes.status, await postRes.text());
+			try {
+				notifyProvider(notif);
 			} catch (e) {
 				sendHTML(res, `no deleteAcceptedShare - fail ${provider}ocm-provider/`);
 			}
