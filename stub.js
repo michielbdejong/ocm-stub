@@ -7,21 +7,24 @@ function sendHTML(res, text) {
 }
 
 // singleton global, naively assume only one share exists at a time:
-let obj = {};
+let mostRecentShareIn = {};
 
-async function notifyProvider(notif) {
-	const sharedBy = obj.sharedBy || obj.sender || obj.owner;
-	let provider = sharedBy.split('@')[1].replace('\/', '/');
-	if (!provider.startsWith('https://')) {
-		provider = `https://${provider}`;
+async function getServerConfig(otherUser) {
+	let otherServer = otherUser.split('@')[1].replace('\/', '/');
+	if (!otherServer.startsWith('https://')) {
+		otherServer = `https://${otherServer}`;
 	}
-	if (!provider.endsWith('/')) {
-		provider = `${provider}/`;
+	if (!otherServer.endsWith('/')) {
+		otherServer = `${otherServer}/`;
 	}
-	console.log('fetching', `${provider}ocm-provider/`);
-	const configResult = await fetch(`${provider}ocm-provider/`);
+	console.log('fetching', `${otherServer}ocm-provider/`);
+	const configResult = await fetch(`${otherServer}ocm-provider/`);
 
-	config = await configResult.json();
+	return configResult.json();
+}
+
+async function notifyProvider(obj, notif) {
+	const config = await getServerConfig(obj.sharedBy || obj.sender || obj.owner);
 	const postRes = await fetch(`${config.endPoint}/notifications`, {
 		method: 'POST',
 		body: JSON.stringify(notif)
@@ -29,6 +32,26 @@ async function notifyProvider(notif) {
 	console.log('notification sent!', postRes.status, await postRes.text());
 }
 
+async function createShare(consumer) {
+	console.log('createShare', consumer);
+	const config = getServerConfig(consumer);
+	const postRes = await fetch(`${config.endPoint}/shares`, {
+		method: 'POST',
+		body: JSON.stringify({
+			shareWith: consumer,
+			name: 'Test share from stub',
+			providerId: 42,
+			owner: 'admin@https://stub1.pdsinterop.net',
+			ownerDisplayName: 'admin',
+			sender: 'admin@https://stub1.pdsinterop.net',
+			senderDisplayName: 'admin',
+			shareType: 'user',
+			resourceType: 'file',
+			protocol: { name: 'webdav', options: { sharedSecret: 'shareMe' } }
+		})
+	});
+	console.log('outgoing share created!', postRes.status, await postRes.text());
+}
 const server = https.createServer({
 	key: fs.readFileSync('/etc/letsencrypt/live/stub1.pdsinterop.net/privkey.pem'),
 	cert: fs.readFileSync('/etc/letsencrypt/live/stub1.pdsinterop.net/cert.pem'),
@@ -57,7 +80,7 @@ const server = https.createServer({
 		} else if (req.url === '/ocm/shares') {
 			console.log('yes /ocm/shares');
 			try {
-				obj = JSON.parse(bodyIn);
+				mostRecentShareIn = JSON.parse(bodyIn);
 			} catch (e) {
 				res.writeHead(400);
 				sendHTML(res, 'Cannot parse JSON');
@@ -89,21 +112,22 @@ const server = https.createServer({
 			sendHTML(res, 'yes publicLink');
 		} else if (req.url.startsWith('/shareWith')) {
 			console.log('yes shareWith');
+			createShare(req.url.query);
 			sendHTML(res, 'yes shareWith');
 		} else if (req.url.startsWith('/acceptShare')) {
 			console.log('yes acceptShare');
 			try {
-				console.log('Creating notif to accept share, obj =', obj);
+				console.log('Creating notif to accept share, obj =', mostRecentShareIn);
 				const notif = {
 					type: 'SHARE_ACCEPTED',
-					resourceType: obj.resourceType,
-					providerId: obj.providerId,
+					resourceType: mostRecentShareIn.resourceType,
+					providerId: mostRecentShareIn.providerId,
 					notification: {
-						sharedSecret: obj.protocol.options.sharedSecret,
+						sharedSecret: mostRecentShareIn.protocol.options.sharedSecret,
 						message: 'Recipient accepted the share'
 					}
 				};
-				notifyProvider(notif);
+				notifyProvider(mostRecentShareIn, notif);
 			} catch (e) {
 				console.error(e);
 				sendHTML(res, `no acceptShare - fail`);
@@ -114,7 +138,7 @@ const server = https.createServer({
 			const notif = {
 				type: 'SHARE_DECLINED',
 				message: 'I don\'t want to use this share anymore.',
-				id: obj.id,
+				id: mostRecentShareIn.id,
 				createdAt: new Date()
 			};
 			// When unshared from the provider side:
@@ -127,16 +151,16 @@ const server = https.createServer({
 			// 		"message":"File was unshared"
 			// 	}
 			// }
-			console.log('deleting share', obj);
+			console.log('deleting share', mostRecentShareIn);
 			try {
-				notifyProvider(notif);
+				notifyProvider(mostRecentShareIn, notif);
 			} catch (e) {
 				sendHTML(res, `no deleteAcceptedShare - fail ${provider}ocm-provider/`);
 			}
 			sendHTML(res, 'yes deleteAcceptedShare');
 		} else if (req.url == '/') {
-			console.log('yes a/', obj);
-			sendHTML(res, 'yes /' + JSON.stringify(obj, null, 2));
+			console.log('yes a/', mostRecentShareIn);
+			sendHTML(res, 'yes /' + JSON.stringify(mostRecentShareIn, null, 2));
 		} else {
 			console.log('not recognized');
 	    sendHTML(res, 'OK');
