@@ -42,6 +42,9 @@ async function createShare(consumer) {
   console.log(config);
 	const postRes = await fetch(`${config.endPoint}/shares`, {
 		method: 'POST',
+		headers: {
+			'Content-Type': 'application/json'
+		},
 		body: JSON.stringify({
 			shareWith: consumer,
 			name: 'Test share from stub',
