@@ -117,7 +117,7 @@ const server = https.createServer({
 			sendHTML(res, 'yes publicLink');
 		} else if (req.url.startsWith('/shareWith')) {
 			console.log('yes shareWith');
-			const urlObj = new URL(request.url, SERVER_ROOT);
+			const urlObj = new URL(req.url, SERVER_ROOT);
 			createShare(urlObj.search.substring(1));
 			sendHTML(res, 'yes shareWith');
 		} else if (req.url.startsWith('/acceptShare')) {
