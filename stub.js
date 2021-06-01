@@ -60,7 +60,7 @@ async function createShare(consumer) {
   const shareSpec = {
     shareWith: consumer,
     name: 'Test share from stub',
-    providerId: 42,
+    providerId: '42',
     owner: USER,
     ownerDisplayName: 'admin',
     sender: USER,
