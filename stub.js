@@ -5,6 +5,15 @@ const fetch = require('node-fetch');
 const SERVER_HOST = 'stub1.pdsinterop.net';
 const SERVER_ROOT = `https://${SERVER_HOST}`;
 const USER = `admin@${SERVER_ROOT}`;
+// const HTTPS_OPTIONS = {
+//   key: fs.readFileSync(`/etc/letsencrypt/live/${SERVER_HOST}/privkey.pem`),
+//   cert: fs.readFileSync(`/etc/letsencrypt/live/${SERVER_HOST}/cert.pem`),
+//   ca: fs.readFileSync(`/etc/letsencrypt/live/${SERVER_HOST}/chain.pem`)
+// }
+const HTTPS_OPTIONS = {
+  key: fs.readFileSync(`./server.key`),
+  cert: fs.readFileSync(`./server.cert`)
+}
 
 function sendHTML(res, text) {
 	res.end(`<!DOCTYPE html><html><head></head><body>${text}</body></html>`);
@@ -14,8 +23,11 @@ function sendHTML(res, text) {
 let mostRecentShareIn = {};
 
 async function getServerConfig(otherUser) {
-	let otherServer = otherUser.split('@')[1].replace('\/', '/');
-	if (!otherServer.startsWith('https://')) {
+	let otherServer = otherUser.split('@').splice(1).join('@').replace('\/', '/');
+	console.log(otherServer);
+        if (otherServer.startsWith('http://')) {
+	  // support http:// for testing
+	} else if (!otherServer.startsWith('https://')) {
 		otherServer = `https://${otherServer}`;
 	}
 	if (!otherServer.endsWith('/')) {
@@ -23,7 +35,9 @@ async function getServerConfig(otherUser) {
 	}
 	console.log('fetching', `${otherServer}ocm-provider/`);
 	const configResult = await fetch(`${otherServer}ocm-provider/`);
-
+// const text = await configResult.text();
+// console.log({ text });
+// JSON.parse(text);
 	return { config: await configResult.json(), otherServer };
 }
 
@@ -40,6 +54,9 @@ async function createShare(consumer) {
 	console.log('createShare', consumer);
 	const { config, otherServer } = await getServerConfig(consumer);
   console.log(config);
+        if (!config.endPoint) {
+          config.endPoint = config.endpoint;
+        }
 	const postRes = await fetch(`${config.endPoint}/shares`, {
 		method: 'POST',
 		headers: {
@@ -61,11 +78,7 @@ async function createShare(consumer) {
 	console.log('outgoing share created!', postRes.status, await postRes.text());
 	return otherServer;
 }
-const server = https.createServer({
-	key: fs.readFileSync(`/etc/letsencrypt/live/${SERVER_HOST}/privkey.pem`),
-	cert: fs.readFileSync(`/etc/letsencrypt/live/${SERVER_HOST}/cert.pem`),
-	ca: fs.readFileSync(`/etc/letsencrypt/live/${SERVER_HOST}/chain.pem`)
-}, async (req, res) => {
+const server = https.createServer(HTTPS_OPTIONS, async (req, res) => {
 	console.log(req.method, req.url, req.headers);
 	let bodyIn = '';
 	req.on('data', (chunk) => {
