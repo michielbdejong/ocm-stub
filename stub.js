@@ -28,7 +28,9 @@ async function getServerConfig(otherUser) {
         if (otherServer.startsWith('http://')) {
     // support http:// for testing
   } else if (!otherServer.startsWith('https://')) {
-    otherServer = `https://${otherServer}`;
+    // otherServer = `https://${otherServer}`;
+    // work around https://github.com/cs3org/reva/issues/1962
+    otherServer = `http://${otherServer}`;
   }
   if (!otherServer.endsWith('/')) {
     otherServer = `${otherServer}/`;
@@ -70,6 +72,10 @@ async function createShare(consumer) {
     protocol: { name: 'webdav', options: { sharedSecret: 'shareMe' } }
   }
   console.log(shareSpec, shareSpec.protocol);
+  // work around https://github.com/cs3org/reva/issues/1752
+  if (typeof config.endPoint === 'undefined') {
+	  config.endPoint = config.endpoint;
+  }
   const postRes = await fetch(`${config.endPoint}/shares`, {
     method: 'POST',
     headers: {
