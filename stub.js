@@ -83,12 +83,22 @@ async function createShare(consumer) {
     config.endPoint = config.endPoint.substring(0, config.endPoint.length - 1);
   }
 
+  // work around https://github.com/cs3org/reva/issues/1979
+  var formBody = [];
+  for (var property in shareSpec) {
+    var encodedKey = encodeURIComponent(property);
+    var encodedValue = encodeURIComponent(shareSpec[property]);
+    formBody.push(encodedKey + "=" + encodedValue);
+  }
+  formBody = formBody.join("&");
+  console.log(formBody)
+
   const postRes = await fetch(`${config.endPoint}/shares`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/x-www-form-urlencoded'
     },
-    form: shareSpec
+    body: formBody,
   });
   console.log('outgoing share created!', postRes.status, await postRes.text());
   return otherServer;
