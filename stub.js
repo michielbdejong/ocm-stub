@@ -2,7 +2,7 @@ const https = require('https');
 const fs = require('fs');
 const fetch = require('node-fetch');
 
-const SERVER_HOST = 'stub1.pdsinterop.net';
+const SERVER_HOST = 'stub1.docker';
 const SERVER_ROOT = `https://${SERVER_HOST}`;
 const USER = `admin@${SERVER_ROOT}`;
 // const HTTPS_OPTIONS = {
@@ -25,7 +25,7 @@ let mostRecentShareIn = {};
 async function getServerConfig(otherUser) {
   let otherServer = otherUser.split('@').splice(1).join('@').replace('\/', '/');
   console.log(otherServer);
-        if (otherServer.startsWith('http://')) {
+  if (otherServer.startsWith('http://')) {
     // support http:// for testing
   } else if (!otherServer.startsWith('https://')) {
     // otherServer = `https://${otherServer}`;
