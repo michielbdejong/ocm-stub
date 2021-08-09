@@ -76,6 +76,10 @@ async function createShare(consumer) {
   if (typeof config.endPoint === 'undefined') {
 	  config.endPoint = config.endpoint;
   }
+  if (config.endPoint.endsWith('/')) {
+    config.endPoint = config.endPoint.substring(0, a.length - 1);
+  }
+
   const postRes = await fetch(`${config.endPoint}/shares`, {
     method: 'POST',
     headers: {
