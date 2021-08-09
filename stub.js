@@ -94,118 +94,122 @@ const server = https.createServer(HTTPS_OPTIONS, async (req, res) => {
     bodyIn += chunk.toString();
   });
   req.on('end', async () => {
-    if (req.url === '/ocm-provider/') {
-      console.log('yes /ocm-provider/');
-      res.end(JSON.stringify({
-        enabled: true,
-        apiVersion: '1.0-proposal1',
-        endPoint: `${SERVER_ROOT}/ocm`,
-        resourceTypes: [
-          {
-            name: 'file',
-            shareTypes: [ 'user', 'group' ],
-            protocols: { webdav: '/webdav/' }
-          }
-        ]
-      }));
-    } else if (req.url === '/ocm/shares') {
-      console.log('yes /ocm/shares');
-      try {
-        mostRecentShareIn = JSON.parse(bodyIn);
-      } catch (e) {
-        res.writeHead(400);
-        sendHTML(res, 'Cannot parse JSON');
-      }
-      // {
-      //   shareWith: "admin@https:\/\/stub1.pdsinterop.net",
-      //   shareType: "user",
-      //   name: "Reasons to use Nextcloud.pdf",
-      //   resourceType: "file",
-      //   description:"",
-      //   providerId:202,
-      //   owner: "alice@https:\/\/nc1.pdsinterop.net\/",
-      //   ownerDisplayName: "alice",
-      //   sharedBy: "alice@https:\/\/nc1.pdsinterop.net\/",
-      //   sharedByDisplayName":"alice",
-      //   "protocol":{
-      //     "name":"webdav",
-      //     "options":{
-      //       "sharedSecret":"lvns5N9ZXm1T1zx",
-      //       "permissions":"{http:\/\/open-cloud-mesh.org\/ns}share-permissions"
-      //     }
-      //   }
-      // }
-      // obj.id = obj.providerId;
-      res.writeHead(201);
-      sendHTML(res, 'Created');
-    } else if (req.url.startsWith('/publicLink')) {
-      console.log('yes publicLink');
-      const urlObj = new URL(req.url, SERVER_ROOT);
-      if (urlObj.search.startsWith('?saveTo=')) {
-        console.log('creating share', urlObj.search);
-        const otherServerRoot = await createShare(decodeURIComponent(urlObj.search).substring('?saveTo='.length));
-        res.writeHead(301, {
-          location: otherServerRoot
-        });
-        sendHTML(res, `Redirecting you to ${otherServerRoot}`);
-      } else {
-        sendHTML(res, 'yes publicLink, saveTo?');
-      }
-    } else if (req.url.startsWith('/shareWith')) {
-      console.log('yes shareWith');
-      const urlObj = new URL(req.url, SERVER_ROOT);
-      await createShare(decodeURIComponent(urlObj.search).substring('?'.length));
-      sendHTML(res, 'yes shareWith');
-    } else if (req.url.startsWith('/acceptShare')) {
-      console.log('yes acceptShare');
-      try {
-        console.log('Creating notif to accept share, obj =', mostRecentShareIn);
+    try {
+      if (req.url === '/ocm-provider/') {
+        console.log('yes /ocm-provider/');
+        res.end(JSON.stringify({
+          enabled: true,
+          apiVersion: '1.0-proposal1',
+          endPoint: `${SERVER_ROOT}/ocm`,
+          resourceTypes: [
+            {
+              name: 'file',
+              shareTypes: [ 'user', 'group' ],
+              protocols: { webdav: '/webdav/' }
+            }
+          ]
+        }));
+      } else if (req.url === '/ocm/shares') {
+        console.log('yes /ocm/shares');
+        try {
+          mostRecentShareIn = JSON.parse(bodyIn);
+        } catch (e) {
+          res.writeHead(400);
+          sendHTML(res, 'Cannot parse JSON');
+        }
+        // {
+        //   shareWith: "admin@https:\/\/stub1.pdsinterop.net",
+        //   shareType: "user",
+        //   name: "Reasons to use Nextcloud.pdf",
+        //   resourceType: "file",
+        //   description:"",
+        //   providerId:202,
+        //   owner: "alice@https:\/\/nc1.pdsinterop.net\/",
+        //   ownerDisplayName: "alice",
+        //   sharedBy: "alice@https:\/\/nc1.pdsinterop.net\/",
+        //   sharedByDisplayName":"alice",
+        //   "protocol":{
+        //     "name":"webdav",
+        //     "options":{
+        //       "sharedSecret":"lvns5N9ZXm1T1zx",
+        //       "permissions":"{http:\/\/open-cloud-mesh.org\/ns}share-permissions"
+        //     }
+        //   }
+        // }
+        // obj.id = obj.providerId;
+        res.writeHead(201);
+        sendHTML(res, 'Created');
+      } else if (req.url.startsWith('/publicLink')) {
+        console.log('yes publicLink');
+        const urlObj = new URL(req.url, SERVER_ROOT);
+        if (urlObj.search.startsWith('?saveTo=')) {
+          console.log('creating share', urlObj.search);
+          const otherServerRoot = await createShare(decodeURIComponent(urlObj.search).substring('?saveTo='.length));
+          res.writeHead(301, {
+            location: otherServerRoot
+          });
+          sendHTML(res, `Redirecting you to ${otherServerRoot}`);
+        } else {
+          sendHTML(res, 'yes publicLink, saveTo?');
+        }
+      } else if (req.url.startsWith('/shareWith')) {
+        console.log('yes shareWith');
+        const urlObj = new URL(req.url, SERVER_ROOT);
+        await createShare(decodeURIComponent(urlObj.search).substring('?'.length));
+        sendHTML(res, 'yes shareWith');
+      } else if (req.url.startsWith('/acceptShare')) {
+        console.log('yes acceptShare');
+        try {
+          console.log('Creating notif to accept share, obj =', mostRecentShareIn);
+          const notif = {
+            type: 'SHARE_ACCEPTED',
+            resourceType: mostRecentShareIn.resourceType,
+            providerId: mostRecentShareIn.providerId,
+            notification: {
+              sharedSecret: mostRecentShareIn.protocol.options.sharedSecret,
+              message: 'Recipient accepted the share'
+            }
+          };
+          notifyProvider(mostRecentShareIn, notif);
+        } catch (e) {
+          console.error(e);
+          sendHTML(res, `no acceptShare - fail`);
+        }
+        sendHTML(res, 'yes acceptShare');
+      } else if (req.url.startsWith('/deleteAcceptedShare')) {
+        console.log('yes deleteAcceptedShare');
         const notif = {
-          type: 'SHARE_ACCEPTED',
-          resourceType: mostRecentShareIn.resourceType,
-          providerId: mostRecentShareIn.providerId,
-          notification: {
-            sharedSecret: mostRecentShareIn.protocol.options.sharedSecret,
-            message: 'Recipient accepted the share'
-          }
+          type: 'SHARE_DECLINED',
+          message: 'I don\'t want to use this share anymore.',
+          id: mostRecentShareIn.id,
+          createdAt: new Date()
         };
-        notifyProvider(mostRecentShareIn, notif);
-      } catch (e) {
-        console.error(e);
-        sendHTML(res, `no acceptShare - fail`);
+        // When unshared from the provider side:
+        // {
+        //   "notificationType":"SHARE_UNSHARED",
+        //   "resourceType":"file",
+        //   "providerId":"89",
+        //   "notification":{
+        //     "sharedSecret":"N7epqXHRKXWbg8f",
+        //     "message":"File was unshared"
+        //   }
+        // }
+        console.log('deleting share', mostRecentShareIn);
+        try {
+          notifyProvider(mostRecentShareIn, notif);
+        } catch (e) {
+          sendHTML(res, `no deleteAcceptedShare - fail ${provider}ocm-provider/`);
+        }
+        sendHTML(res, 'yes deleteAcceptedShare');
+      } else if (req.url == '/') {
+        console.log('yes a/', mostRecentShareIn);
+        sendHTML(res, 'yes /' + JSON.stringify(mostRecentShareIn, null, 2));
+      } else {
+        console.log('not recognized');
+        sendHTML(res, 'OK');
       }
-      sendHTML(res, 'yes acceptShare');
-    } else if (req.url.startsWith('/deleteAcceptedShare')) {
-      console.log('yes deleteAcceptedShare');
-      const notif = {
-        type: 'SHARE_DECLINED',
-        message: 'I don\'t want to use this share anymore.',
-        id: mostRecentShareIn.id,
-        createdAt: new Date()
-      };
-      // When unshared from the provider side:
-      // {
-      //   "notificationType":"SHARE_UNSHARED",
-      //   "resourceType":"file",
-      //   "providerId":"89",
-      //   "notification":{
-      //     "sharedSecret":"N7epqXHRKXWbg8f",
-      //     "message":"File was unshared"
-      //   }
-      // }
-      console.log('deleting share', mostRecentShareIn);
-      try {
-        notifyProvider(mostRecentShareIn, notif);
-      } catch (e) {
-        sendHTML(res, `no deleteAcceptedShare - fail ${provider}ocm-provider/`);
-      }
-      sendHTML(res, 'yes deleteAcceptedShare');
-    } else if (req.url == '/') {
-      console.log('yes a/', mostRecentShareIn);
-      sendHTML(res, 'yes /' + JSON.stringify(mostRecentShareIn, null, 2));
-    } else {
-      console.log('not recognized');
-      sendHTML(res, 'OK');
+    } catch (e) {
+      console.error(e);
     }
   });
 });
