@@ -5,6 +5,9 @@ const fetch = require('node-fetch');
 const SERVER_HOST = 'stub1.docker';
 const SERVER_ROOT = `https://${SERVER_HOST}`;
 const USER = `admin@${SERVER_ROOT}`;
+const PROVIDER_ID = 'cernbox';
+const MESH_PROVIDER = 'cernbox.cern.ch';
+
 // const HTTPS_OPTIONS = {
 //   key: fs.readFileSync(`/etc/letsencrypt/live/${SERVER_HOST}/privkey.pem`),
 //   cert: fs.readFileSync(`/etc/letsencrypt/live/${SERVER_HOST}/cert.pem`),
@@ -63,8 +66,8 @@ async function createShare(consumer) {
   const shareSpec = {
     shareWith: consumer,
     name: 'Test share from stub',
-    providerId: '42',
-    meshProvider: 'stub1.docker',
+    providerId: PROVIDER_ID,
+    meshProvider: MESH_PROVIDER,
     owner: USER,
     ownerDisplayName: 'admin',
     sender: USER,
