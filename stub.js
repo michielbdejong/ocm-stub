@@ -69,7 +69,8 @@ async function createShare(consumer) {
     senderDisplayName: 'admin',
     shareType: 'user',
     resourceType: 'file',
-    protocol: { name: 'webdav', options: { sharedSecret: 'shareMe' } }
+    // see https://github.com/cs3org/ocm-test-suite/issues/25#issuecomment-852151913
+    protocol: JSON.stringify({ name: 'webdav', options: { sharedSecret: 'shareMe' } }) // sic.
   }
   console.log(shareSpec, shareSpec.protocol);
   // work around https://github.com/cs3org/reva/issues/1752
@@ -83,9 +84,9 @@ async function createShare(consumer) {
   const postRes = await fetch(`${config.endPoint}/shares`, {
     method: 'POST',
     headers: {
-      'Content-Type': 'application/json'
+      'Content-Type': 'application/x-www-form-urlencoded'
     },
-    body: JSON.stringify(shareSpec)
+    form: shareSpec
   });
   console.log('outgoing share created!', postRes.status, await postRes.text());
   return otherServer;
