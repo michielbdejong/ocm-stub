@@ -77,7 +77,7 @@ async function createShare(consumer) {
 	  config.endPoint = config.endpoint;
   }
   if (config.endPoint.endsWith('/')) {
-    config.endPoint = config.endPoint.substring(0, a.length - 1);
+    config.endPoint = config.endPoint.substring(0, config.endPoint.length - 1);
   }
 
   const postRes = await fetch(`${config.endPoint}/shares`, {
