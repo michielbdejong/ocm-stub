@@ -4,7 +4,7 @@ const fetch = require('node-fetch');
 
 const SERVER_HOST = 'stub1.docker';
 const SERVER_ROOT = `https://${SERVER_HOST}`;
-const USER = `admin@${SERVER_ROOT}`;
+const USER = `einstein`;
 const PROVIDER_ID = 'cernbox';
 const MESH_PROVIDER = 'cernbox.cern.ch';
 
@@ -64,7 +64,7 @@ async function createShare(consumer) {
   }
 
   const shareSpec = {
-    shareWith: consumer,
+    shareWith: 'marie', // consumer,
     name: 'Test share from stub',
     providerId: PROVIDER_ID,
     meshProvider: MESH_PROVIDER,
