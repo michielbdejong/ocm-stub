@@ -59,10 +59,12 @@ async function createShare(consumer) {
   if (!config.endPoint) {
     config.endPoint = process.env.FORCE_ENDPOINT;
   }
+
   const shareSpec = {
     shareWith: consumer,
     name: 'Test share from stub',
     providerId: '42',
+    meshProvider: 'stub1.docker',
     owner: USER,
     ownerDisplayName: 'admin',
     sender: USER,
@@ -70,7 +72,7 @@ async function createShare(consumer) {
     shareType: 'user',
     resourceType: 'file',
     // see https://github.com/cs3org/ocm-test-suite/issues/25#issuecomment-852151913
-    protocol: JSON.stringify({ name: 'webdav', options: { sharedSecret: 'shareMe' } }) // sic.
+    protocol: JSON.stringify({ name: 'webdav', options: { token: 'shareMe' } }) // sic.
   }
   console.log(shareSpec, shareSpec.protocol);
   // work around https://github.com/cs3org/reva/issues/1752
