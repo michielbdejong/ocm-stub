@@ -33,9 +33,7 @@ async function getServerConfig(otherUser) {
   if (otherServer.startsWith('http://')) {
     // support http:// for testing
   } else if (!otherServer.startsWith('https://')) {
-    // otherServer = `https://${otherServer}`;
-    // work around https://github.com/cs3org/reva/issues/1962
-    otherServer = `http://${otherServer}`;
+    otherServer = `https://${otherServer}`;
   }
   if (!otherServer.endsWith('/')) {
     otherServer = `${otherServer}/`;
