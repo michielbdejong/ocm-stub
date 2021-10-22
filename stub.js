@@ -1,6 +1,7 @@
 const https = require('https');
 const fs = require('fs');
 const fetch = require('node-fetch');
+const { isNativeError } = require('util/types');
 
 const SERVER_HOST = 'stub1.docker';
 const SERVER_ROOT = `https://${SERVER_HOST}`;
@@ -55,6 +56,32 @@ async function notifyProvider(obj, notif) {
   console.log('notification sent!', postRes.status, await postRes.text());
 }
 
+async function forwardInvite(invite) {
+  console.log('forwardInvite', invite);
+  const { config, otherServer } = await getServerConfig(invite);
+  console.log('discovered', config, otherServer);
+  if (!config.endPoint) {
+    config.endPoint = process.env.FORCE_ENDPOINT;
+  }
+
+  const inviteSpec = {
+    invite: {
+      recipientProvider: 'stub2.docker',
+      token: invite.split('@')[0],
+      userId: 'marie',
+      email: 'marie@cesnet.cz',
+      name: 'Marie Curie'
+    }
+  }
+  const postRes = await fetch(`${config.endPoint}/invites/accept`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(inviteSpec, null, 2),
+  });
+  console.log('outgoing share created!', postRes.status, await postRes.text());
+}
 async function createShare(consumer) {
   console.log('createShare', consumer);
   const { config, otherServer } = await getServerConfig(consumer);
@@ -78,30 +105,16 @@ async function createShare(consumer) {
     protocol: JSON.stringify({ name: 'webdav', options: { token: 'shareMe' } }) // sic.
   }
   console.log(shareSpec, shareSpec.protocol);
-  // work around https://github.com/cs3org/reva/issues/1752
-  if (typeof config.endPoint === 'undefined') {
-	  config.endPoint = config.endpoint;
-  }
   if (config.endPoint.endsWith('/')) {
     config.endPoint = config.endPoint.substring(0, config.endPoint.length - 1);
   }
 
-  // work around https://github.com/cs3org/reva/issues/1979
-  var formBody = [];
-  for (var property in shareSpec) {
-    var encodedKey = encodeURIComponent(property);
-    var encodedValue = encodeURIComponent(shareSpec[property]);
-    formBody.push(encodedKey + "=" + encodedValue);
-  }
-  formBody = formBody.join("&");
-  console.log(formBody)
-
   const postRes = await fetch(`${config.endPoint}/shares`, {
     method: 'POST',
     headers: {
-      'Content-Type': 'application/x-www-form-urlencoded'
+      'Content-Type': 'application/json'
     },
-    body: formBody,
+    body: JSON.stringify(shareSpec, null, 2),
   });
   console.log('outgoing share created!', postRes.status, await postRes.text());
   return otherServer;
@@ -172,6 +185,11 @@ const server = https.createServer(HTTPS_OPTIONS, async (req, res) => {
         } else {
           sendHTML(res, 'yes publicLink, saveTo?');
         }
+      } else if (req.url.startsWith('/forwardInvite')) {
+        console.log('yes forwardInvite');
+        const urlObj = new URL(req.url, SERVER_ROOT);
+        await forwardInvite(decodeURIComponent(urlObj.search).substring('?'.length));
+        sendHTML(res, 'yes forwardInvite');
       } else if (req.url.startsWith('/shareWith')) {
         console.log('yes shareWith');
         const urlObj = new URL(req.url, SERVER_ROOT);
