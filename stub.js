@@ -3,7 +3,7 @@ const fs = require('fs');
 const fetch = require('node-fetch');
 const { isNativeError } = require('util/types');
 
-const SERVER_NAME = process.env.HOST || 'stub1';
+const SERVER_NAME = process.env.HOST || 'stub2';
 const SERVER_HOST = `${SERVER_NAME}.docker`;
 const SERVER_ROOT = `https://${SERVER_HOST}`;
 const USER = `einstein`;
@@ -16,8 +16,8 @@ const MESH_PROVIDER = 'cernbox.cern.ch';
 //   ca: fs.readFileSync(`/etc/letsencrypt/live/${SERVER_HOST}/chain.pem`)
 // }
 const HTTPS_OPTIONS = {
-  key: fs.readFileSync(`/tls/${SERVER_HOST}.key`),
-  cert: fs.readFileSync(`/tls/${SERVER_HOST}.crt`)
+  key: fs.readFileSync(`/tls/${SERVER_NAME}.key`),
+  cert: fs.readFileSync(`/tls/${SERVER_NAME}.crt`)
 }
 
 function sendHTML(res, text) {
