@@ -8,4 +8,4 @@ ADD ./tls /tls
 RUN cp /tls/*.crt /usr/local/share/ca-certificates/
 RUN update-ca-certificates
 RUN npm install
-CMD node stub.js
+CMD NODE_TLS_REJECT_UNAUTHORIZED=0 node stub.js
