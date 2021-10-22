@@ -71,8 +71,12 @@ async function forwardInvite(invite) {
       email: 'marie@cesnet.cz',
       name: 'Marie Curie'
     }
+  } 
+  let endPoint = config.endPoint || config.endpoint;
+  if (endPoint.substr(-1) == '/') {
+    endPoint = endPoint.substring(0, endPoint.length - 1);
   }
-  const postRes = await fetch(`${config.endPoint}/invites/accept`, {
+  const postRes = await fetch(`${endPoint}/invites/accept`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json'
