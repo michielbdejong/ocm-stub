@@ -3,7 +3,8 @@ const fs = require('fs');
 const fetch = require('node-fetch');
 const { isNativeError } = require('util/types');
 
-const SERVER_HOST = 'stub1.docker';
+const SERVER_NAME = process.env.HOST || 'stub1';
+const SERVER_HOST = `${SERVER_NAME}.docker`;
 const SERVER_ROOT = `https://${SERVER_HOST}`;
 const USER = `einstein`;
 const PROVIDER_ID = 'cernbox';
