@@ -15,8 +15,8 @@ const MESH_PROVIDER = 'cernbox.cern.ch';
 //   ca: fs.readFileSync(`/etc/letsencrypt/live/${SERVER_HOST}/chain.pem`)
 // }
 const HTTPS_OPTIONS = {
-  key: fs.readFileSync(`./server.key`),
-  cert: fs.readFileSync(`./server.cert`)
+  key: fs.readFileSync(`/tls/${SERVER_HOST}.key`),
+  cert: fs.readFileSync(`/tls/${SERVER_HOST}.crt`)
 }
 
 function sendHTML(res, text) {
