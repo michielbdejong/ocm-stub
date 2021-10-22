@@ -1,9 +1,10 @@
 FROM node
-ADD . /app
-WORKDIR /app
-RUN openssl req -new -x509 -days 365 -nodes \
-  -out ./server.cert \
-  -keyout ./server.key \
-  -subj "/C=RO/ST=Bucharest/L=Bucharest/O=IT/CN=www.example.ro"
+RUN apt update && apt install -y vim
+RUN git clone https://github.com/michielbdejong/ocm-stub
+WORKDIR /ocm-stub
+# Trust all the certificates:
+ADD ./tls /tls
+RUN cp /tls/*.crt /usr/local/share/ca-certificates/
+RUN update-ca-certificates
 RUN npm install
 CMD node stub.js
