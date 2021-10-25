@@ -23,11 +23,6 @@ const HTTPS_OPTIONS = {
 function sendHTML(res, text) {
   res.end(`<!DOCTYPE html><html><head></head><body>${text}</body></html>`);
 }
-function sendJSON(res, text) {
-  res.end(JSON.stringify({
-    result: text,
-  }, null, 2));
-}
 
 // singleton global, naively assume only one share exists at a time:
 let mostRecentShareIn = {};
@@ -190,8 +185,9 @@ const server = https.createServer(HTTPS_OPTIONS, async (req, res) => {
         res.writeHead(201, {
           'Content-Type': 'application/json'
         });
-        // sendHTML(res, 'Created');
-        sendJSON(res, 'Created');
+        res.end(JSON.stringify({
+          "recipientDisplayName": "Marie Curie"
+        }, null, 2));
       } else if (req.url.startsWith('/publicLink')) {
         console.log('yes publicLink');
         const urlObj = new URL(req.url, SERVER_ROOT);
