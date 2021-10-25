@@ -52,6 +52,10 @@ async function notifyProvider(obj, notif) {
   // and sets `owner` to a user opaqueId only (e.g. obj.owner: '4c510ada-c86b-4815-8820-42cdf82c3d51').
   // what we ultimately need when a share comes from reva is obj.meshProvider, e.g.: 'revad1.docker'.
   const { config } = await getServerConfig(obj.sharedBy || obj.sender || /* obj.owner || */ `${obj.owner}@${obj.meshProvider}`);
+  if (config.endPoint.substr(-1) == '/') {
+    config.endPoint = config.endPoint.substring(0, config.endPoint.length - 1);
+  }
+
   const postRes = await fetch(`${config.endPoint}/notifications`, {
     method: 'POST',
     body: JSON.stringify(notif)
@@ -77,10 +81,10 @@ async function forwardInvite(invite) {
     }
   }
   let endPoint = config.endPoint || config.endpoint;
-  console.log('posting', `${endPoint}/invites/accept`, JSON.stringify(inviteSpec, null, 2))
   if (endPoint.substr(-1) == '/') {
     endPoint = endPoint.substring(0, endPoint.length - 1);
   }
+  console.log('posting', `${endPoint}/invites/accept`, JSON.stringify(inviteSpec, null, 2))
   const postRes = await fetch(`${endPoint}/invites/accept`, {
     method: 'POST',
     headers: {
