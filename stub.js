@@ -65,11 +65,11 @@ async function forwardInvite(invite) {
 
   const inviteSpec = {
     invite: {
-      recipientProvider: 'stub2.docker',
       token: invite.split('@')[0],
       userId: 'marie',
+      recipientProvider: 'stub2.docker',
+      name: 'Marie Curie',
       email: 'marie@cesnet.cz',
-      name: 'Marie Curie'
     }
   } 
   let endPoint = config.endPoint || config.endpoint;
