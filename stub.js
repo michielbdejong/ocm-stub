@@ -7,8 +7,8 @@ const SERVER_NAME = process.env.HOST || 'stub2';
 const SERVER_HOST = `${SERVER_NAME}.docker`;
 const SERVER_ROOT = `https://${SERVER_HOST}`;
 const USER = `einstein`;
-const PROVIDER_ID = 'cernbox';
-const MESH_PROVIDER = 'cernbox.cern.ch';
+const PROVIDER_ID = SERVER_HOST;
+const MESH_PROVIDER = SERVER_HOST;
 
 // const HTTPS_OPTIONS = {
 //   key: fs.readFileSync(`/etc/letsencrypt/live/${SERVER_HOST}/privkey.pem`),
