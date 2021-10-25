@@ -47,7 +47,11 @@ async function getServerConfig(otherUser) {
 }
 
 async function notifyProvider(obj, notif) {
-  const { config } = await getServerConfig(obj.sharedBy || obj.sender || obj.owner);
+  console.log('notifyProvider', obj, notif);
+  // FIXME: reva sets no `sharedBy` and no `sender`
+  // and sets `owner` to a user opaqueId only (e.g. obj.owner: '4c510ada-c86b-4815-8820-42cdf82c3d51').
+  // what we ultimately need when a share comes from reva is obj.meshProvider, e.g.: 'revad1.docker'.
+  const { config } = await getServerConfig(obj.sharedBy || obj.sender || /* obj.owner || */ `${obj.owner}@${obj.meshProvider}`);
   const postRes = await fetch(`${config.endPoint}/notifications`, {
     method: 'POST',
     body: JSON.stringify(notif)
@@ -71,7 +75,8 @@ async function forwardInvite(invite) {
       name: 'Marie Curie',
       email: 'marie@cesnet.cz',
     }
-  } 
+  }
+  console.log('posting', `${endPoint}/invites/accept`, JSON.stringify(inviteSpec, null, 2))
   let endPoint = config.endPoint || config.endpoint;
   if (endPoint.substr(-1) == '/') {
     endPoint = endPoint.substring(0, endPoint.length - 1);
@@ -83,7 +88,7 @@ async function forwardInvite(invite) {
     },
     body: JSON.stringify(inviteSpec, null, 2),
   });
-  console.log('outgoing share created!', postRes.status, await postRes.text());
+  console.log('invite forwarded', postRes.status, await postRes.text());
 }
 async function createShare(consumer) {
   console.log('createShare', consumer);
