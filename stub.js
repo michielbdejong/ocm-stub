@@ -76,8 +76,8 @@ async function forwardInvite(invite) {
       email: 'marie@cesnet.cz',
     }
   }
-  console.log('posting', `${endPoint}/invites/accept`, JSON.stringify(inviteSpec, null, 2))
   let endPoint = config.endPoint || config.endpoint;
+  console.log('posting', `${endPoint}/invites/accept`, JSON.stringify(inviteSpec, null, 2))
   if (endPoint.substr(-1) == '/') {
     endPoint = endPoint.substring(0, endPoint.length - 1);
   }
