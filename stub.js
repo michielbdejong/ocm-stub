@@ -108,9 +108,9 @@ async function createShare(consumer) {
     providerId: PROVIDER_ID,
     meshProvider: MESH_PROVIDER,
     owner: USER,
-    ownerDisplayName: 'admin',
+    ownerDisplayName: USER,
     sender: USER,
-    senderDisplayName: 'admin',
+    senderDisplayName: USER,
     shareType: 'user',
     resourceType: 'file',
     // see https://github.com/cs3org/ocm-test-suite/issues/25#issuecomment-852151913
