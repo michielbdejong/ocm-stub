@@ -207,7 +207,15 @@ const server = https.createServer(HTTPS_OPTIONS, async (req, res) => {
             resourceType: mostRecentShareIn.resourceType,
             providerId: mostRecentShareIn.providerId,
             notification: {
-              sharedSecret: mostRecentShareIn.protocol.options.sharedSecret,
+              sharedSecret: (
+                mostRecentShareIn.protocol ?
+                (
+                  mostRecentShareIn.protocol.options ?
+                  mostRecentShareIn.protocol.options.sharedSecret :
+                  undefined
+                ) :
+                undefined
+              ),
               message: 'Recipient accepted the share'
             }
           };
