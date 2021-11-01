@@ -28,6 +28,8 @@ function sendHTML(res, text) {
 let mostRecentShareIn = {};
 
 async function getServerConfig(otherUser) {
+  console.log('getServerConfig', otherUser);
+
   let otherServer = otherUser.split('@').splice(1).join('@').replace('\/', '/');
   console.log(otherServer);
   if (otherServer.startsWith('http://')) {
@@ -109,7 +111,7 @@ async function createShare(consumer) {
     meshProvider: MESH_PROVIDER,
     owner: USER,
     ownerDisplayName: USER,
-    sender: USER,
+    sender: `${USER}@${SERVER_HOST}`,
     senderDisplayName: USER,
     shareType: 'user',
     resourceType: 'file',
