@@ -7,8 +7,8 @@ const SERVER_NAME = process.env.HOST || 'stub2';
 const SERVER_HOST = `${SERVER_NAME}.docker`;
 const SERVER_ROOT = `https://${SERVER_HOST}`;
 const USER = `einstein`;
-const PROVIDER_ID = 'cernbox';
-const MESH_PROVIDER = 'cernbox.cern.ch';
+const PROVIDER_ID = SERVER_HOST;
+const MESH_PROVIDER = SERVER_HOST;
 
 // const HTTPS_OPTIONS = {
 //   key: fs.readFileSync(`/etc/letsencrypt/live/${SERVER_HOST}/privkey.pem`),
@@ -28,6 +28,8 @@ function sendHTML(res, text) {
 let mostRecentShareIn = {};
 
 async function getServerConfig(otherUser) {
+  console.log('getServerConfig', otherUser);
+
   let otherServer = otherUser.split('@').splice(1).join('@').replace('\/', '/');
   console.log(otherServer);
   if (otherServer.startsWith('http://')) {
@@ -47,7 +49,15 @@ async function getServerConfig(otherUser) {
 }
 
 async function notifyProvider(obj, notif) {
-  const { config } = await getServerConfig(obj.sharedBy || obj.sender || obj.owner);
+  console.log('notifyProvider', obj, notif);
+  // FIXME: reva sets no `sharedBy` and no `sender`
+  // and sets `owner` to a user opaqueId only (e.g. obj.owner: '4c510ada-c86b-4815-8820-42cdf82c3d51').
+  // what we ultimately need when a share comes from reva is obj.meshProvider, e.g.: 'revad1.docker'.
+  const { config } = await getServerConfig(obj.sharedBy || obj.sender || /* obj.owner || */ `${obj.owner}@${obj.meshProvider}`);
+  if (config.endPoint.substr(-1) == '/') {
+    config.endPoint = config.endPoint.substring(0, config.endPoint.length - 1);
+  }
+
   const postRes = await fetch(`${config.endPoint}/notifications`, {
     method: 'POST',
     body: JSON.stringify(notif)
@@ -71,11 +81,12 @@ async function forwardInvite(invite) {
       name: 'Marie Curie',
       email: 'marie@cesnet.cz',
     }
-  } 
+  }
   let endPoint = config.endPoint || config.endpoint;
   if (endPoint.substr(-1) == '/') {
     endPoint = endPoint.substring(0, endPoint.length - 1);
   }
+  console.log('posting', `${endPoint}/invites/accept`, JSON.stringify(inviteSpec, null, 2))
   const postRes = await fetch(`${endPoint}/invites/accept`, {
     method: 'POST',
     headers: {
@@ -83,7 +94,7 @@ async function forwardInvite(invite) {
     },
     body: JSON.stringify(inviteSpec, null, 2),
   });
-  console.log('outgoing share created!', postRes.status, await postRes.text());
+  console.log('invite forwarded', postRes.status, await postRes.text());
 }
 async function createShare(consumer) {
   console.log('createShare', consumer);
@@ -99,9 +110,9 @@ async function createShare(consumer) {
     providerId: PROVIDER_ID,
     meshProvider: MESH_PROVIDER,
     owner: USER,
-    ownerDisplayName: 'admin',
-    sender: USER,
-    senderDisplayName: 'admin',
+    ownerDisplayName: USER,
+    sender: `${USER}@${SERVER_HOST}`,
+    senderDisplayName: USER,
     shareType: 'user',
     resourceType: 'file',
     // see https://github.com/cs3org/ocm-test-suite/issues/25#issuecomment-852151913
@@ -173,8 +184,12 @@ const server = https.createServer(HTTPS_OPTIONS, async (req, res) => {
         //   }
         // }
         // obj.id = obj.providerId;
-        res.writeHead(201);
-        sendHTML(res, 'Created');
+        res.writeHead(201, {
+          'Content-Type': 'application/json'
+        });
+        res.end(JSON.stringify({
+          "recipientDisplayName": "Marie Curie"
+        }, null, 2));
       } else if (req.url.startsWith('/publicLink')) {
         console.log('yes publicLink');
         const urlObj = new URL(req.url, SERVER_ROOT);
