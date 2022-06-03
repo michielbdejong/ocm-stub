@@ -1,5 +1,6 @@
 const https = require('https');
 const fs = require('fs');
+const url = require('url');
 const fetch = require('node-fetch');
 const { isNativeError } = require('util/types');
 
@@ -268,6 +269,23 @@ const server = https.createServer(HTTPS_OPTIONS, async (req, res) => {
       } else if (req.url == '/') {
         console.log('yes a/', mostRecentShareIn);
         sendHTML(res, 'yes /' + JSON.stringify(mostRecentShareIn, null, 2));
+      } else if (req.url.startsWith('/meshdir?')) {
+
+    const queryObject = url.parse(req.url, true).query;
+    console.log(queryObject);
+
+        console.log('meshdir', mostRecentShareIn);
+        sendHTML(res, 'Welcome to the meshdir stub. Please click a server to continue to:<ul>' +
+          '  <li><a id="nc2">nc2</a></li>' +
+          '  <li><a id="oc2">oc2</a></li>' +
+          '  <li><a id="stub2">stub2</a></li>' +
+          '  <li><a id="revad2">revad2</a></li>' +
+          '</ul><script>' +
+          '  document.getElementById("nc2").setAttribute("href", "https://nc2.docker/ocm/invites/forward"+window.location.search);' +
+          '  document.getElementById("oc2").setAttribute("href", "https://oc2.docker/ocm/invites/forward"+window.location.search);' +
+          '  document.getElementById("stub2").setAttribute("href", "https://stub2.docker/ocm/invites/forward"+window.location.search);' +
+          '  document.getElementById("revad2").setAttribute("href", "https://revad2.docker/ocm/invites/forward"+window.location.search);' +
+          '</script>');
       } else {
         console.log('not recognized');
         sendHTML(res, 'OK');
