@@ -273,19 +273,29 @@ const server = https.createServer(HTTPS_OPTIONS, async (req, res) => {
 
     const queryObject = url.parse(req.url, true).query;
     console.log(queryObject);
+        const config = {
+          nc2: "https://nc2.docker/ocm/invites/forward",
+          oc2: "https://oc2.docker/ocm/invites/forward",
+          stub2: "https://stub.docker/ocm/invites/forward",
+          revad2: undefined
+        };
+        const items = [];
+        const scriptLines = [];
+        Object.keys(config).forEach(key => {
+          if (typeof config[key] === "string") {
+            items.push(`  <li><a id="${key}">${key}</a></li>`);
+            scriptLines.push(`  document.getElementById("${key}").setAttribute("href", "${config[key]}"+window.location.search);' +")`);
+          } else {
+            const params = new URLSearchParams(req.url.split('?')[1]);
+		  console.log(params);
+            const token = params.get('token');
+            const providerDomain = params.get('providerDomain');
+            items.push(`  <li>${key}: Please run <tt>ocm-invite-forward -idp ${providerDomain} -token ${token}</tt> in Reva's CLI tool.</li>`);
+          }
+        })
 
         console.log('meshdir', mostRecentShareIn);
-        sendHTML(res, 'Welcome to the meshdir stub. Please click a server to continue to:<ul>' +
-          '  <li><a id="nc2">nc2</a></li>' +
-          '  <li><a id="oc2">oc2</a></li>' +
-          '  <li><a id="stub2">stub2</a></li>' +
-          '  <li><a id="revad2">revad2</a></li>' +
-          '</ul><script>' +
-          '  document.getElementById("nc2").setAttribute("href", "https://nc2.docker/ocm/invites/forward"+window.location.search);' +
-          '  document.getElementById("oc2").setAttribute("href", "https://oc2.docker/ocm/invites/forward"+window.location.search);' +
-          '  document.getElementById("stub2").setAttribute("href", "https://stub2.docker/ocm/invites/forward"+window.location.search);' +
-          '  document.getElementById("revad2").setAttribute("href", "https://revad2.docker/ocm/invites/forward"+window.location.search);' +
-          '</script>');
+        sendHTML(res, `Welcome to the meshdir stub. Please click a server to continue to:<ul>${items}</ul><script>${scriptLines}</script>`);
       } else {
         console.log('not recognized');
         sendHTML(res, 'OK');
