@@ -274,8 +274,8 @@ const server = https.createServer(HTTPS_OPTIONS, async (req, res) => {
     const queryObject = url.parse(req.url, true).query;
     console.log(queryObject);
         const config = {
-          nc2: "https://nc2.docker/ocm/invites/forward",
-          oc2: "https://oc2.docker/ocm/invites/forward",
+          nc2: "https://nc2.docker/index.php/apps/sciencemesh/accept",
+          oc2: "https://oc2.docker/index.php/apps/sciencemesh/accept",
           stub2: "https://stub.docker/ocm/invites/forward",
           revad2: undefined
         };
@@ -284,7 +284,7 @@ const server = https.createServer(HTTPS_OPTIONS, async (req, res) => {
         Object.keys(config).forEach(key => {
           if (typeof config[key] === "string") {
             items.push(`  <li><a id="${key}">${key}</a></li>`);
-            scriptLines.push(`  document.getElementById("${key}").setAttribute("href", "${config[key]}"+window.location.search);' +")`);
+            scriptLines.push(`  document.getElementById("${key}").setAttribute("href", "${config[key]}"+window.location.search);`);
           } else {
             const params = new URLSearchParams(req.url.split('?')[1]);
 		  console.log(params);
@@ -295,7 +295,7 @@ const server = https.createServer(HTTPS_OPTIONS, async (req, res) => {
         })
 
         console.log('meshdir', mostRecentShareIn);
-        sendHTML(res, `Welcome to the meshdir stub. Please click a server to continue to:<ul>${items}</ul><script>${scriptLines}</script>`);
+        sendHTML(res, `Welcome to the meshdir stub. Please click a server to continue to:\n<ul>${items.join('\n')}</ul>\n<script>\n${scriptLines.join('\n')}\n</script>\n`);
       } else {
         console.log('not recognized');
         sendHTML(res, 'OK');
