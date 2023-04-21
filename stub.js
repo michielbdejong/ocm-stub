@@ -274,6 +274,7 @@ const server = https.createServer(HTTPS_OPTIONS, async (req, res) => {
     const queryObject = url.parse(req.url, true).query;
     console.log(queryObject);
         const config = {
+          nc1: "https://nc1.docker/index.php/apps/sciencemesh/accept",
           nc2: "https://nc2.docker/index.php/apps/sciencemesh/accept",
           oc2: "https://oc2.docker/index.php/apps/sciencemesh/accept",
           stub2: "https://stub.docker/ocm/invites/forward",
