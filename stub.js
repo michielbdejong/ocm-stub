@@ -4,7 +4,9 @@ const url = require('url');
 const fetch = require('node-fetch');
 const { isNativeError } = require('util/types');
 
-const SERVER_NAME = process.env.HOST || 'stub2';
+const TLS_DIR = '../tls';
+
+const SERVER_NAME = process.env.HOST || 'server';
 const SERVER_HOST = `${SERVER_NAME}.docker`;
 const SERVER_ROOT = `https://${SERVER_HOST}`;
 const USER = `einstein`;
@@ -17,8 +19,8 @@ const MESH_PROVIDER = SERVER_HOST;
 //   ca: fs.readFileSync(`/etc/letsencrypt/live/${SERVER_HOST}/chain.pem`)
 // }
 const HTTPS_OPTIONS = {
-  key: fs.readFileSync(`/tls/${SERVER_NAME}.key`),
-  cert: fs.readFileSync(`/tls/${SERVER_NAME}.crt`)
+  key: fs.readFileSync(`${TLS_DIR}/${SERVER_NAME}.key`),
+  cert: fs.readFileSync(`${TLS_DIR}/${SERVER_NAME}.crt`)
 }
 
 function sendHTML(res, text) {
@@ -308,4 +310,4 @@ const server = https.createServer(HTTPS_OPTIONS, async (req, res) => {
   });
 });
 server.listen(443);
-
+console.log(`Browse to https://localhost or https://${SERVER_HOST}`);
