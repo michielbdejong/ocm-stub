@@ -268,9 +268,18 @@ const server = https.createServer(HTTPS_OPTIONS, async (req, res) => {
           sendHTML(res, `no deleteAcceptedShare - fail ${provider}ocm-provider/`);
         }
         sendHTML(res, 'yes deleteAcceptedShare');
-      } else if (req.url == '/') {
-        console.log('yes a/', mostRecentShareIn);
-        sendHTML(res, 'yes /' + JSON.stringify(mostRecentShareIn, null, 2));
+      } else if (req.url.startsWith('/?')) {
+        console.log('yes /', mostRecentShareIn);
+        if (req.url.indexOf('session=active') != -1) {
+          sendHTML(res, `<form method="get">
+            <input type="submit" value="Log out">
+          </form> /` + JSON.stringify(mostRecentShareIn, null, 2));
+        } else {
+          sendHTML(res, `<form method="get">
+            <input type="hidden" name="session" value="active">
+            <input type="submit" value="Log in">
+          </form> /` + JSON.stringify(mostRecentShareIn, null, 2));
+        }
       } else if (req.url.startsWith('/meshdir?')) {
 
     const queryObject = url.parse(req.url, true).query;
@@ -302,7 +311,7 @@ const server = https.createServer(HTTPS_OPTIONS, async (req, res) => {
         sendHTML(res, `Welcome to the meshdir stub. Please click a server to continue to:\n<ul>${items.join('\n')}</ul>\n<script>\n${scriptLines.join('\n')}\n</script>\n`);
       } else {
         console.log('not recognized');
-        sendHTML(res, 'OK');
+        sendHTML(res, `OK ${req.url}`);
       }
     } catch (e) {
       console.error(e);
