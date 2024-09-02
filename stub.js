@@ -57,6 +57,16 @@ async function check(message, signature) {
   return verify;
 }
 
+async function verify(message, signature, sharedBy) {
+  const senderConfig = await getServerConfig(sharedBy);
+  const senderPubKey = senderConfig.publicKey;
+  console.log('fetched sender pub key', senderPubKey);
+  const data = Buffer.from(message);
+  const verify = await crypto.verify('RSA-SHA256', data, senderPubKey, Buffer.from(signature, 'base64'));
+  console.log('verify done', verify);
+  return verify;
+}
+
 async function getServerConfig(otherUser) {
   console.log('getServerConfig', otherUser);
 
@@ -126,6 +136,10 @@ async function forwardInvite(invite) {
   });
   console.log('invite forwarded', postRes.status, await postRes.text());
 }
+function getDigest(body) {
+  return 'SHA-256=' + crypto.createHash('sha256').update(body).digest('base64');
+}
+
 async function createShare(consumer) {
   console.log('createShare', consumer);
   // config={
@@ -157,22 +171,23 @@ async function createShare(consumer) {
 
   const urlObj = new URL(config.endPoint);
   const body = JSON.stringify(shareSpec, null, 2);
+  const digest = getDigest(body);
   const headers = {
-    'Content-Type': 'application/json',
     'request-target': 'post /shares',
     'Content-Length': body.length,
     host: urlObj.host,
     date: new Date().toUTCString(),
-    digest: 'SHA-256=' + crypto.createHash('sha256').update(body).digest('base64')
+    digest
   };
   const message = Object.values(headers).join('\n');
   const signed = await sign(message);
   const checked = await check(message, signed);
   console.log({ checked });
+  headers['Content-Type'] = 'application/json';
   headers.Signature = [
     `keyId="${SERVER_HOST}"`,
     `algorithm="rsa-sha256"`,
-    `headers="content-type request-target content-length host date digest"`,
+    `headers="request-target content-length host date digest"`,
     `signature="${signed}"`
   ].join(',');
   console.log(headers);
@@ -185,6 +200,14 @@ async function createShare(consumer) {
   console.log('outgoing share created!', postRes.status, await postRes.text());
   return otherServer;
 }
+function expectHeader(headers, name, expected) {
+  if (headers[name] === expected) {
+    console.log(`header ${name} OK`, expected);
+  } else {
+    console.log(`header ${name} missing or wrong`, JSON.stringify(headers), expected);
+  }
+}
+
 const server = https.createServer(HTTPS_OPTIONS, async (req, res) => {
   console.log(req.method, req.url, req.headers);
   let bodyIn = '';
@@ -217,6 +240,27 @@ const server = https.createServer(HTTPS_OPTIONS, async (req, res) => {
           res.writeHead(400);
           sendHTML(res, 'Cannot parse JSON');
         }
+        if (typeof req.headers['Signature'] === 'string') {
+          console.log('checking signature');
+          expectHeader(req.headers, 'request-target', 'post /shares');
+          expectHeader(req.headers, 'content-length', bodyIn.length);
+          expectHeader(req.headers, 'host', SERVER_HOST);
+          const digest = getDigest(bodyIn);
+          expectHeader(req.headers, 'digest', digest);
+          const headers = {
+            'request-target': 'post /shares',
+            'Content-Length': bodyIn.length,
+            host: SERVER_HOST,
+            date: req.headers.date,
+            digest
+          };
+          const message = Object.values(headers).join('\n');
+          const verified = await verify(message, req.headers.signature, bodyIn.sharedBy);
+          console.log({ verified });
+        } else {
+          console.log('unsigned request to create share');
+        }
+
         // {
         //   shareWith: "admin@https:\/\/stub1.pdsinterop.net",
         //   shareType: "user",
