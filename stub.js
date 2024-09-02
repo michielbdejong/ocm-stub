@@ -174,7 +174,7 @@ async function createShare(consumer) {
   const digest = getDigest(body);
   const headers = {
     'request-target': 'post /shares',
-    'Content-Length': body.length,
+    'content-length': body.length.toString(),
     host: urlObj.host,
     date: new Date().toUTCString(),
     digest
@@ -183,11 +183,11 @@ async function createShare(consumer) {
   const signed = await sign(message);
   const checked = await check(message, signed);
   console.log({ checked });
-  headers['Content-Type'] = 'application/json';
-  headers.Signature = [
+  headers['content-type'] = 'application/json';
+  headers.signature = [
     `keyId="${SERVER_HOST}"`,
     `algorithm="rsa-sha256"`,
-    `headers="request-target content-length host date digest"`,
+    `headers="${Object.values(headers)}"`,
     `signature="${signed}"`
   ].join(',');
   console.log(headers);
@@ -206,6 +206,9 @@ function expectHeader(headers, name, expected) {
   } else {
     console.log(`header ${name} missing or wrong`, JSON.stringify(headers), expected);
   }
+}
+function checkExpectedHeaders(received, expected, onesToCheck) {
+  onesToCheck.forEach(name => expectHeader(received, name, expected[name]));
 }
 
 const server = https.createServer(HTTPS_OPTIONS, async (req, res) => {
@@ -242,19 +245,17 @@ const server = https.createServer(HTTPS_OPTIONS, async (req, res) => {
         }
         if (typeof req.headers['signature'] === 'string') {
           console.log('checking signature');
-          expectHeader(req.headers, 'request-target', 'post /shares');
-          expectHeader(req.headers, 'content-length', bodyIn.length.toString());
-          expectHeader(req.headers, 'host', SERVER_HOST);
           const digest = getDigest(bodyIn);
-          expectHeader(req.headers, 'digest', digest);
           const headers = {
             'request-target': 'post /shares',
-            'Content-Length': bodyIn.length,
+            'content-length': bodyIn.length.toString(),
             host: SERVER_HOST,
             date: req.headers.date,
             digest
           };
           const message = Object.values(headers).join('\n');
+          console.log(message);
+          checkExpectedHeaders(req.headers, headers, ['request-target', 'content-length', 'host', 'digest']);
           const verified = await verify(message, req.headers.signature, mostRecentShareIn.sharedBy);
           console.log({ verified });
         } else {
