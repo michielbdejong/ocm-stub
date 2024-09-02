@@ -58,8 +58,8 @@ async function check(message, signature) {
   return verify;
 }
 
-async function verify(message, signature, sharedBy) {
-  const senderConfig = await getServerConfig(sharedBy);
+async function verify(message, signature, otherServer) {
+  const senderConfig = await getServerConfigForServer(otherServer);
   const senderPubKey = senderConfig.config.publicKey;
   console.log('fetched sender pub key', senderConfig, senderPubKey);
   console.log('RECIPIENT VERIFY', message, signature, senderPubKey);
@@ -69,8 +69,8 @@ async function verify(message, signature, sharedBy) {
   return verify;
 }
 
-async function getServerConfig(otherUser) {
-  console.log('getServerConfig', otherUser);
+async function getServerForUser(otherUser) {
+  console.log('getServerForUser', otherUser);
 
   let otherServer = otherUser.split('@').splice(1).join('@').replace('\/', '/');
   console.log(otherServer);
@@ -82,6 +82,9 @@ async function getServerConfig(otherUser) {
   if (!otherServer.endsWith('/')) {
     otherServer = `${otherServer}/`;
   }
+  return otherServer;
+}
+async function getServerConfigForServer(otherServer) {
   console.log('fetching', `${otherServer}ocm-provider/`);
   const configResult = await fetch(`${otherServer}ocm-provider/`);
 // const text = await configResult.text();
@@ -89,13 +92,17 @@ async function getServerConfig(otherUser) {
 // JSON.parse(text);
   return { config: await configResult.json(), otherServer };
 }
+async function getServerConfigForUser(otherUser) {
+  const otherServer = getServerForUser(otherUser);
+  return getServerConfigForServer(otherServer);
+}
 
 async function notifyProvider(obj, notif) {
   console.log('notifyProvider', obj, notif);
   // FIXME: reva sets no `sharedBy` and no `sender`
   // and sets `owner` to a user opaqueId only (e.g. obj.owner: '4c510ada-c86b-4815-8820-42cdf82c3d51').
   // what we ultimately need when a share comes from reva is obj.meshProvider, e.g.: 'revad1.docker'.
-  const { config } = await getServerConfig(obj.sharedBy || obj.sender || /* obj.owner || */ `${obj.owner}@${obj.meshProvider}`);
+  const { config } = await getServerConfigForUser(obj.sharedBy || obj.sender || /* obj.owner || */ `${obj.owner}@${obj.meshProvider}`);
   if (config.endPoint.substr(-1) == '/') {
     config.endPoint = config.endPoint.substring(0, config.endPoint.length - 1);
   }
@@ -109,7 +116,7 @@ async function notifyProvider(obj, notif) {
 
 async function forwardInvite(invite) {
   console.log('forwardInvite', invite);
-  const { config, otherServer } = await getServerConfig(invite);
+  const { config, otherServer } = await getServerConfigForUser(invite);
   console.log('discovered', config, otherServer);
   if (!config.endPoint) {
     config.endPoint = process.env.FORCE_ENDPOINT;
@@ -147,7 +154,7 @@ async function createShare(consumer) {
   // config={
   //   endPoint: 'https://example.com/'
   // };
-  const { config, otherServer } = await getServerConfig(consumer);
+  const { config, otherServer } = await getServerConfigForUser(consumer);
   // console.log(config);
   if (!config.endPoint) {
     config.endPoint = process.env.FORCE_ENDPOINT;
@@ -213,6 +220,32 @@ function checkExpectedHeaders(received, expected, onesToCheck) {
   onesToCheck.forEach(name => expectHeader(received, name, expected[name]));
 }
 
+async function checkSignature(bodyIn, headersIn) {
+  console.log('checking signature');
+  const digest = getDigest(bodyIn);
+  const headers = {
+    'request-target': 'post /shares',
+    'content-length': bodyIn.length.toString(),
+    host: SERVER_HOST,
+    date: req.headers.date,
+    digest
+  };
+  const message = Object.values(headers).join('\n');
+  console.log(message);
+  checkExpectedHeaders(headersIn, headers, ['request-target', 'content-length', 'host', 'digest']);
+  //                    1                   2                  3                    4
+  const rx = /^keyId=\"(.*)\"\,algorithm=\"(.*)\"\,headers\=\"(.*)\",signature\=\"(.*)\"$/g;
+  const parsed = rx.exec(headersIn.signature);
+  console.log(parsed);
+  const sendingServer = parsed[1];
+  const signature = parsed[4];
+  const verified = await verify(message, signature, sendingServer);
+  console.log({ verified, sendingServer });
+  if (verified) {
+    return sendingServer;
+  }
+}
+
 const server = https.createServer(HTTPS_OPTIONS, async (req, res) => {
   console.log(req.method, req.url, req.headers);
   let bodyIn = '';
@@ -222,12 +255,16 @@ const server = https.createServer(HTTPS_OPTIONS, async (req, res) => {
   });
   req.on('end', async () => {
     try {
-      if (req.url === '/ocm-provider/') {
-        console.log('yes /ocm-provider/');
+      if (req.url === '/token') {
+        const signingServer = checkSignature(bodyIn, req.headers);
+        console.log('token request', bodyIn, signingServer);
+      } else if (req.url === '/ocm-provider/') {
+          console.log('yes /ocm-provider/');
         res.end(JSON.stringify({
           enabled: true,
           apiVersion: '1.0-proposal1',
           endPoint: `${SERVER_ROOT}/ocm`,
+          tokenEndpoint: `${SERVER_ROOT}/token`,
           resourceTypes: [
             {
               name: 'file',
@@ -246,25 +283,16 @@ const server = https.createServer(HTTPS_OPTIONS, async (req, res) => {
           sendHTML(res, 'Cannot parse JSON');
         }
         if (typeof req.headers['signature'] === 'string') {
-          console.log('checking signature');
-          const digest = getDigest(bodyIn);
-          const headers = {
-            'request-target': 'post /shares',
-            'content-length': bodyIn.length.toString(),
-            host: SERVER_HOST,
-            date: req.headers.date,
-            digest
-          };
-          const message = Object.values(headers).join('\n');
-          console.log(message);
-          checkExpectedHeaders(req.headers, headers, ['request-target', 'content-length', 'host', 'digest']);
-          //                    1                   2                  3                    4
-          const rx = /^keyId=\"(.*)\"\,algorithm=\"(.*)\"\,headers\=\"(.*)\",signature\=\"(.*)\"$/g;
-          const parsed = rx.exec(req.headers.signature);
-          console.log(parsed);
-          const signature = parsed[4];
-          const verified = await verify(message, signature, mostRecentShareIn.sharedBy);
-          console.log({ verified });
+          const signingServer = checkSignature(bodyIn, req.headers);
+          const claimedServer = getServerForUser(mostRecentShareIn.sharedBy);
+          if (signingServer !== claimedServer) {
+            console.log('ALARM! Claimed server does not match signing server', claimedServer, signingServer);
+          }
+          if (mostRecentShareIn?.protocol?.webdav?.code) {
+            console.log('code received! exchanging it for token...');
+            // const otherServerConfig = getServerConfigForServer(claimedServer);
+            // const token = fetchAccessToken(otherServerConfig.tokenEndpoint, mostRecentShareIn?.protocol?.webdav?.code);
+          }
         } else {
           console.log('unsigned request to create share');
         }
