@@ -108,17 +108,17 @@ async function createShare(consumer) {
   }
 
   const shareSpec = {
-    shareWith: 'marie', // consumer,
+    shareWith: consumer,
     name: 'Test share from stub',
     providerId: PROVIDER_ID,
     meshProvider: MESH_PROVIDER,
-    owner: USER,
+    owner: `${USER}@${SERVER_HOST}`,
     ownerDisplayName: USER,
-    sender: `${USER}@${SERVER_HOST}`,
+    sharedBy: `${USER}@${SERVER_HOST}`,
     senderDisplayName: USER,
     shareType: 'user',
     resourceType: 'file',
-    protocol: { name: 'webdav', options: { token: 'shareMe' } }
+    protocol: { name: 'webdav', options: { sharedSecret: 'shareMeNot' } }
   }
   console.log(shareSpec, shareSpec.protocol);
   if (config.endPoint.endsWith('/')) {
