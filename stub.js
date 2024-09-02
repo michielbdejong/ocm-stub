@@ -128,9 +128,9 @@ async function forwardInvite(invite) {
 }
 async function createShare(consumer) {
   console.log('createShare', consumer);
-  config={
-    endPoint: 'https://example.com/'
-  };
+  // config={
+  //   endPoint: 'https://example.com/'
+  // };
   const { config, otherServer } = await getServerConfig(consumer);
   // console.log(config);
   if (!config.endPoint) {
