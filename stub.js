@@ -3,8 +3,20 @@ const fs = require('fs');
 const url = require('url');
 const fetch = require('node-fetch');
 const util = require('util');
-const exec = util.promisify(require('child_process').exec);
+// const exec = util.promisify(require('child_process').exec);
+const crypto = require('crypto');
 
+const { privateKey, publicKey } = crypto.generateKeyPairSync('rsa', {
+    modulusLength: 2048,
+    publicKeyEncoding: {
+        type: 'pkcs1',
+        format: 'pem'
+    },
+    privateKeyEncoding: {
+        type: 'pkcs1',
+        format: 'pem'
+    }
+});
 const TLS_DIR = '../tls';
 
 const SERVER_NAME = process.env.HOST || 'server';
@@ -31,16 +43,18 @@ function sendHTML(res, text) {
 // singleton global, naively assume only one share exists at a time:
 let mostRecentShareIn = {};
 
+async function sign(message) {
+  const data = Buffer.from(message);
+  const signature = await crypto.sign('RSA-SHA256', data, privateKey).toString('base64');
+  console.log('signed', signature);
+  return signature;
+}
 
-async function getKeyPair() {
-  const { stdout, stderr } = await exec(`openssl x509 -pubkey -noout -in ${TLS_DIR}/${SERVER_NAME}.crt`);
-  if (stderr !== '') {
-    throw new Error(stderr);
-  }
-  return {
-    public: stdout,
-    private: HTTPS_OPTIONS.key.toString()
-  };
+async function check(message, signature) {
+  const data = Buffer.from(message);
+  const verify = await crypto.verify('RSA-SHA256', data, publicKey, Buffer.from(signature, 'base64'));
+  console.log('verify done', verify);
+  return verify;
 }
 
 async function getServerConfig(otherUser) {
@@ -114,7 +128,10 @@ async function forwardInvite(invite) {
 }
 async function createShare(consumer) {
   console.log('createShare', consumer);
-  const { config, otherServer } = await getServerConfig(consumer);
+  config={
+    endPoint: 'https://example.com/'
+  };
+  // const { config, otherServer } = await getServerConfig(consumer);
   console.log(config);
   if (!config.endPoint) {
     config.endPoint = process.env.FORCE_ENDPOINT;
@@ -138,12 +155,32 @@ async function createShare(consumer) {
     config.endPoint = config.endPoint.substring(0, config.endPoint.length - 1);
   }
 
+  const urlObj = new URL(config.endPoint);
+  const body = JSON.stringify(shareSpec, null, 2);
+  const headers = {
+    'Content-Type': 'application/json',
+    'request-target': 'post /shares',
+    'Content-Length': body.length,
+    host: urlObj.host,
+    date: new Date().toUTCString(),
+    digest: 'SHA-256=' + crypto.createHash('sha256').update(body).digest('base64')
+  };
+  const message = Object.values(headers).join('\n');
+  const signed = await sign(message);
+  const checked = await check(message, signed);
+  console.log({ checked });
+  headers.Signature = [
+    `keyId="${SERVER_HOST}"`,
+    `algorithm="rsa-sha256"`,
+    `headers="content-type request-target content-length host date digest"`,
+    `signature="${signed}"`
+  ].join(',');
+  console.log(headers);
+
   const postRes = await fetch(`${config.endPoint}/shares`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify(shareSpec, null, 2),
+    headers,
+    body,
   });
   console.log('outgoing share created!', postRes.status, await postRes.text());
   return otherServer;
@@ -158,7 +195,6 @@ const server = https.createServer(HTTPS_OPTIONS, async (req, res) => {
   req.on('end', async () => {
     try {
       if (req.url === '/ocm-provider/') {
-        const keyPair = await getKeyPair();
         console.log('yes /ocm-provider/');
         res.end(JSON.stringify({
           enabled: true,
@@ -171,7 +207,7 @@ const server = https.createServer(HTTPS_OPTIONS, async (req, res) => {
               protocols: { webdav: '/webdav/' }
             }
           ],
-          publicKey: keyPair.public
+          publicKey
         }));
       } else if (req.url === '/ocm/shares') {
         console.log('yes /ocm/shares');
