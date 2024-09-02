@@ -51,6 +51,7 @@ async function sign(message) {
 }
 
 async function check(message, signature) {
+  console.log('SENDER VERIFY', message, signature, publicKey);
   const data = Buffer.from(message);
   const verify = await crypto.verify('RSA-SHA256', data, publicKey, Buffer.from(signature, 'base64'));
   console.log('verify done', verify);
@@ -61,6 +62,7 @@ async function verify(message, signature, sharedBy) {
   const senderConfig = await getServerConfig(sharedBy);
   const senderPubKey = senderConfig.config.publicKey;
   console.log('fetched sender pub key', senderConfig, senderPubKey);
+  console.log('RECIPIENT VERIFY', message, signature, senderPubKey);
   const data = Buffer.from(message);
   const verify = await crypto.verify('RSA-SHA256', data, senderPubKey, Buffer.from(signature, 'base64'));
   console.log('verify done', verify);
