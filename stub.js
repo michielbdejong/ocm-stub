@@ -2,7 +2,8 @@ const https = require('https');
 const fs = require('fs');
 const url = require('url');
 const fetch = require('node-fetch');
-const { isNativeError } = require('util/types');
+const util = require('util');
+const exec = util.promisify(require('child_process').exec);
 
 const TLS_DIR = '../tls';
 
@@ -29,6 +30,18 @@ function sendHTML(res, text) {
 
 // singleton global, naively assume only one share exists at a time:
 let mostRecentShareIn = {};
+
+
+async function getKeyPair() {
+  const { stdout, stderr } = await exec(`openssl x509 -pubkey -noout -in ${TLS_DIR}/${SERVER_NAME}.crt`);
+  if (stderr !== '') {
+    throw new Error(stderr);
+  }
+  return {
+    public: stdout,
+    private: HTTPS_OPTIONS.key.toString()
+  };
+}
 
 async function getServerConfig(otherUser) {
   console.log('getServerConfig', otherUser);
@@ -145,6 +158,7 @@ const server = https.createServer(HTTPS_OPTIONS, async (req, res) => {
   req.on('end', async () => {
     try {
       if (req.url === '/ocm-provider/') {
+        const keyPair = await getKeyPair();
         console.log('yes /ocm-provider/');
         res.end(JSON.stringify({
           enabled: true,
@@ -156,7 +170,8 @@ const server = https.createServer(HTTPS_OPTIONS, async (req, res) => {
               shareTypes: [ 'user', 'group' ],
               protocols: { webdav: '/webdav/' }
             }
-          ]
+          ],
+          publicKey: keyPair.public
         }));
       } else if (req.url === '/ocm/shares') {
         console.log('yes /ocm/shares');
