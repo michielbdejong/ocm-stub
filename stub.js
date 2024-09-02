@@ -131,8 +131,8 @@ async function createShare(consumer) {
   config={
     endPoint: 'https://example.com/'
   };
-  // const { config, otherServer } = await getServerConfig(consumer);
-  console.log(config);
+  const { config, otherServer } = await getServerConfig(consumer);
+  // console.log(config);
   if (!config.endPoint) {
     config.endPoint = process.env.FORCE_ENDPOINT;
   }
