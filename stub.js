@@ -227,7 +227,7 @@ async function checkSignature(bodyIn, headersIn) {
     'request-target': 'post /shares',
     'content-length': bodyIn.length.toString(),
     host: SERVER_HOST,
-    date: req.headers.date,
+    date: headersIn.date,
     digest
   };
   const message = Object.values(headers).join('\n');
