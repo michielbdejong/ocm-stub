@@ -189,7 +189,7 @@ async function createShare(consumer) {
   headers.signature = [
     `keyId="${SERVER_HOST}"`,
     `algorithm="rsa-sha256"`,
-    `headers="${Object.values(headers)}"`,
+    `headers="${Object.keys(headers)}"`,
     `signature="${signed}"`
   ].join(',');
   console.log(headers);
@@ -258,7 +258,12 @@ const server = https.createServer(HTTPS_OPTIONS, async (req, res) => {
           const message = Object.values(headers).join('\n');
           console.log(message);
           checkExpectedHeaders(req.headers, headers, ['request-target', 'content-length', 'host', 'digest']);
-          const verified = await verify(message, req.headers.signature, mostRecentShareIn.sharedBy);
+          //                    1                   2                  3                    4
+          const rx = /^keyId=\"(.*)\"\,algorithm=\"(.*)\"\,headers\=\"(.*)\",signature\=\"(.*)\"$/g;
+          const parsed = rx.exec(req.headers.signature);
+          console.log(parsed);
+          const signature = parsed[4];
+          const verified = await verify(message, signature, mostRecentShareIn.sharedBy);
           console.log({ verified });
         } else {
           console.log('unsigned request to create share');
