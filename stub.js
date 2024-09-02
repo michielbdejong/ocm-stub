@@ -118,8 +118,7 @@ async function createShare(consumer) {
     senderDisplayName: USER,
     shareType: 'user',
     resourceType: 'file',
-    // see https://github.com/cs3org/ocm-test-suite/issues/25#issuecomment-852151913
-    protocol: JSON.stringify({ name: 'webdav', options: { token: 'shareMe' } }) // sic.
+    protocol: { name: 'webdav', options: { token: 'shareMe' } }
   }
   console.log(shareSpec, shareSpec.protocol);
   if (config.endPoint.endsWith('/')) {
