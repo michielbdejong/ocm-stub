@@ -59,8 +59,8 @@ async function check(message, signature) {
 
 async function verify(message, signature, sharedBy) {
   const senderConfig = await getServerConfig(sharedBy);
-  const senderPubKey = senderConfig.publicKey;
-  console.log('fetched sender pub key', senderPubKey);
+  const senderPubKey = senderConfig.config.publicKey;
+  console.log('fetched sender pub key', senderConfig, senderPubKey);
   const data = Buffer.from(message);
   const verify = await crypto.verify('RSA-SHA256', data, senderPubKey, Buffer.from(signature, 'base64'));
   console.log('verify done', verify);
@@ -240,10 +240,10 @@ const server = https.createServer(HTTPS_OPTIONS, async (req, res) => {
           res.writeHead(400);
           sendHTML(res, 'Cannot parse JSON');
         }
-        if (typeof req.headers['Signature'] === 'string') {
+        if (typeof req.headers['signature'] === 'string') {
           console.log('checking signature');
           expectHeader(req.headers, 'request-target', 'post /shares');
-          expectHeader(req.headers, 'content-length', bodyIn.length);
+          expectHeader(req.headers, 'content-length', bodyIn.length.toString());
           expectHeader(req.headers, 'host', SERVER_HOST);
           const digest = getDigest(bodyIn);
           expectHeader(req.headers, 'digest', digest);
@@ -255,7 +255,7 @@ const server = https.createServer(HTTPS_OPTIONS, async (req, res) => {
             digest
           };
           const message = Object.values(headers).join('\n');
-          const verified = await verify(message, req.headers.signature, bodyIn.sharedBy);
+          const verified = await verify(message, req.headers.signature, mostRecentShareIn.sharedBy);
           console.log({ verified });
         } else {
           console.log('unsigned request to create share');
