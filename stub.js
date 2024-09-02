@@ -93,7 +93,7 @@ async function getServerConfigForServer(otherServer) {
   return { config: await configResult.json(), otherServer };
 }
 async function getServerConfigForUser(otherUser) {
-  const otherServer = getServerForUser(otherUser);
+  const otherServer = await getServerForUser(otherUser);
   return getServerConfigForServer(otherServer);
 }
 
