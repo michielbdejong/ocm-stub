@@ -199,15 +199,15 @@ async function createShare(consumer) {
     senderDisplayName: USER,
     shareType: 'user',
     resourceType: 'file',
+    code: '123456',
     protocol: {
       name: 'webdav',
       options: {
-        code: '123456',
         sharedSecret: 'shareMeNot'
       },
       webdav: {
-        code: '123456',
-        sharedSecret: 'shareMeNot'
+        sharedSecret: 'shareMeNot',
+        URI: 'https://localhost/webdav/file.txt'
       }
     }
   }
@@ -366,13 +366,13 @@ const server = https.createServer(HTTPS_OPTIONS, async (req, res) => {
           if (signingServer !== claimedServer) {
             console.log('ALARM! Claimed server does not match signing server', claimedServer, signingServer);
           }
-          if (mostRecentShareIn?.protocol?.webdav?.code) {
-            console.log('code received! exchanging it for token...', mostRecentShareIn?.protocol?.webdav?.code);
+          if (mostRecentShareIn?.code) {
+            console.log('code received! exchanging it for token...', mostRecentShareIn?.code);
             const { config, fqdn } = await getServerConfigForServer(claimedServer);
             console.log('token endpoint discovered', config.tokenEndpoint);
-            const token = await fetchAccessToken(config.tokenEndpoint, mostRecentShareIn?.protocol?.webdav?.code);
+            const token = await fetchAccessToken(config.tokenEndpoint, mostRecentShareIn?.code);
             console.log('will now use token to access webdav', token);
-            const result = await fetch('https://localhost/webdav/file.txt', {
+            const result = await fetch(mostRecentShareIn?.protocol?.webdav?.URI, {
               headers: {
                 authorization: `Bearer ${token.access_token}`
               }
