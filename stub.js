@@ -36,8 +36,10 @@ const HTTPS_OPTIONS = {
   cert: fs.readFileSync(`${TLS_DIR}/${SERVER_NAME}.crt`)
 }
 
-const tokens = {
-  '123456': 'asdfgh'
+const grants = {
+  'localhost': {
+    '123456': 'asdfgh'
+  }
 }
 
 function sendHTML(res, text) {
@@ -152,6 +154,28 @@ async function forwardInvite(invite) {
 function getDigest(body) {
   return 'SHA-256=' + crypto.createHash('sha256').update(body).digest('base64');
 }
+async function generateSignatureHeaders(body, endPoint, target) {
+  const urlObj = new URL(endPoint);
+  const digest = getDigest(body);
+  const headers = {
+    'request-target': target,
+    'content-length': body.length.toString(),
+    host: urlObj.host,
+    date: new Date().toUTCString(),
+    digest
+  };
+  const message = Object.values(headers).join('\n');
+  const signed = await sign(message);
+  const checked = await check(message, signed);
+  console.log({ checked });
+  headers.signature = [
+    `keyId="${SERVER_HOST}"`,
+    `algorithm="rsa-sha256"`,
+    `headers="${Object.keys(headers)}"`,
+    `signature="${signed}"`
+  ].join(',');
+  return headers;
+}
 
 async function createShare(consumer) {
   console.log('createShare', consumer);
@@ -192,28 +216,12 @@ async function createShare(consumer) {
     config.endPoint = config.endPoint.substring(0, config.endPoint.length - 1);
   }
 
-  const urlObj = new URL(config.endPoint);
+  
   const body = JSON.stringify(shareSpec, null, 2);
-  const digest = getDigest(body);
-  const headers = {
-    'request-target': 'post /shares',
-    'content-length': body.length.toString(),
-    host: urlObj.host,
-    date: new Date().toUTCString(),
-    digest
-  };
-  const message = Object.values(headers).join('\n');
-  const signed = await sign(message);
-  const checked = await check(message, signed);
-  console.log({ checked });
+  const headers = await generateSignatureHeaders(body, config.endPoint, 'post /shares');
   headers['content-type'] = 'application/json';
-  headers.signature = [
-    `keyId="${SERVER_HOST}"`,
-    `algorithm="rsa-sha256"`,
-    `headers="${Object.keys(headers)}"`,
-    `signature="${signed}"`
-  ].join(',');
-  console.log(headers);
+  
+  console.log('signature headers generated', headers);
 
   const postRes = await fetch(`${config.endPoint}/shares`, {
     method: 'POST',
@@ -234,24 +242,28 @@ function checkExpectedHeaders(received, expected, onesToCheck) {
   onesToCheck.forEach(name => expectHeader(received, name, expected[name]));
 }
 async function fetchAccessToken(tokenEndpoint, code) {
+  const body = JSON.stringify({
+    grant_type: `ocm_authorization_code`,
+    code,
+    client_id: SERVER_HOST,
+  }, null, 2);
+  const headers = await generateSignatureHeaders(body, tokenEndpoint, 'post /token');
+  headers['content-type'] = 'application/json';
   const tokenResult = await fetch(tokenEndpoint, {
     method: 'POST',
-    body: [
-      `grant_type=ocm_authorization_code`,
-      `code=${code}`,
-      `client_id=${SERVER_HOST}`,
-    ].join('&')
+    body,
+    headers
   });
-  const response = tokenResult.json();
+  const response = await tokenResult.json();
   console.log('got token response', response);
   return response;
 }
 
-async function checkSignature(bodyIn, headersIn) {
+async function checkSignature(bodyIn, headersIn, target) {
   console.log('checking signature');
   const digest = getDigest(bodyIn);
   const headers = {
-    'request-target': 'post /shares',
+    'request-target': target,
     'content-length': bodyIn.length.toString(),
     host: SERVER_HOST,
     date: headersIn.date,
@@ -283,10 +295,48 @@ const server = https.createServer(HTTPS_OPTIONS, async (req, res) => {
   req.on('end', async () => {
     try {
       if (req.url === '/token') {
-        const signingServer = checkSignature(bodyIn, req.headers);
+        const signingServer = await checkSignature(bodyIn, req.headers, 'post /token');
         console.log('token request', bodyIn, signingServer);
-      } else if (req.url === '/ocm-provider/') {
-          console.log('yes /ocm-provider/');
+        let params;
+        try {
+          params = JSON.parse(bodyIn);
+        } catch (e) {
+          res.writeHead(400);
+          sendHTML(res, 'Cannot parse JSON');
+          return;
+        }
+        if (typeof grants[params.client_id] !== 'object') {
+          res.writeHead(403);
+          sendHTML(res, `no grants found for client ${client_id}`);
+          return;
+        }
+        if (typeof grants[params.client_id][params.code] !== 'string') {
+          res.writeHead(403);
+          sendHTML(res, `grant ${params.code} not found for client ${client_id}`);
+          return;
+        }
+        const token = grants[params.code];
+        res.setHeader('content-type', 'application/json');
+        res.end(JSON.stringify({
+          access_token: grants[params.client_id][params.code],
+          token_type: 'bearer',
+          expires_in: 3600,
+          refresh_token: 'qwertyuiop',
+        }));
+      } else if (req.url === '/webdav/file.txt') {
+        console.log('API access', req.headers['authorization']);
+        if (req.headers['authorization'] === `Bearer asdfgh`) {
+          res.end('The content of the file, well done!');
+        } else if (typeof req.headers['authorization'] === 'string') {
+          res.writeHead(403);
+          res.end('No access, sorry');
+        } else {
+          res.writeHead(401);
+          res.end('Please use a short-lived bearer for this API. You can exchange the code from the share at the token endpoint using httpsig');
+        }
+    } else if (req.url === '/ocm-provider/') {
+        console.log('yes /ocm-provider/');
+        res.setHeader('content-type', 'application/json');
         res.end(JSON.stringify({
           enabled: true,
           apiVersion: '1.0-proposal1',
@@ -308,19 +358,26 @@ const server = https.createServer(HTTPS_OPTIONS, async (req, res) => {
         } catch (e) {
           res.writeHead(400);
           sendHTML(res, 'Cannot parse JSON');
+          return;
         }
         if (typeof req.headers['signature'] === 'string') {
-          const signingServer = await checkSignature(bodyIn, req.headers);
+          const signingServer = await checkSignature(bodyIn, req.headers, 'post /shares');
           const claimedServer = await getServerFqdnForUser(mostRecentShareIn.sharedBy);
           if (signingServer !== claimedServer) {
             console.log('ALARM! Claimed server does not match signing server', claimedServer, signingServer);
           }
           if (mostRecentShareIn?.protocol?.webdav?.code) {
             console.log('code received! exchanging it for token...', mostRecentShareIn?.protocol?.webdav?.code);
-            const otherServerConfig = getServerConfigForServer(claimedServer);
-            console.log('token endpoint discovered', otherServerConfig.tokenEndpoint);
-            const token = fetchAccessToken(otherServerConfig.tokenEndpoint, mostRecentShareIn?.protocol?.webdav?.code);
-            console.log('will now use token to access webdav [TODO]', token);
+            const { config, fqdn } = await getServerConfigForServer(claimedServer);
+            console.log('token endpoint discovered', config.tokenEndpoint);
+            const token = await fetchAccessToken(config.tokenEndpoint, mostRecentShareIn?.protocol?.webdav?.code);
+            console.log('will now use token to access webdav', token);
+            const result = await fetch('https://localhost/webdav/file.txt', {
+              headers: {
+                authorization: `Bearer ${token.access_token}`
+              }
+            });
+            console.log('API accessed', result.status, await result.text());
           }
         } else {
           console.log('unsigned request to create share');
