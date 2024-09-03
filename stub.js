@@ -20,7 +20,7 @@ const { privateKey, publicKey } = crypto.generateKeyPairSync('rsa', {
 const TLS_DIR = '../tls';
 
 const SERVER_NAME = process.env.HOST || 'server';
-const SERVER_HOST = `${SERVER_NAME}.docker`;
+const SERVER_HOST = process.env.SERVER_HOST || `${SERVER_NAME}.docker`;
 const SERVER_ROOT = `https://${SERVER_HOST}`;
 const USER = `einstein`;
 const PROVIDER_ID = SERVER_HOST;
@@ -58,8 +58,8 @@ async function check(message, signature) {
   return verify;
 }
 
-async function verify(message, signature, otherServer) {
-  const senderConfig = await getServerConfigForServer(otherServer);
+async function verify(message, signature, fqdn) {
+  const senderConfig = await getServerConfigForServer(fqdn);
   const senderPubKey = senderConfig.config.publicKey;
   console.log('fetched sender pub key', senderConfig, senderPubKey);
   console.log('RECIPIENT VERIFY', message, signature, senderPubKey);
@@ -69,32 +69,32 @@ async function verify(message, signature, otherServer) {
   return verify;
 }
 
-async function getServerForUser(otherUser) {
-  console.log('getServerForUser', otherUser);
+async function getServerFqdnForUser(otherUser) {
+  console.log('getServerFqdnForUser', otherUser);
 
   let otherServer = otherUser.split('@').splice(1).join('@').replace('\/', '/');
   console.log(otherServer);
   if (otherServer.startsWith('http://')) {
-    // support http:// for testing
-  } else if (!otherServer.startsWith('https://')) {
-    otherServer = `https://${otherServer}`;
+    otherServer = otherServer.substring('http://'.length);
+  } else if (otherServer.startsWith('https://')) {
+    otherServer = otherServer.substring('http://'.length);
   }
-  if (!otherServer.endsWith('/')) {
-    otherServer = `${otherServer}/`;
+  if (otherServer.endsWith('/')) {
+    otherServer = otherServer.substring(0, otherServer.length - 1);
   }
   return otherServer;
 }
-async function getServerConfigForServer(otherServer) {
-  console.log('fetching', `${otherServer}ocm-provider/`);
-  const configResult = await fetch(`${otherServer}ocm-provider/`);
+async function getServerConfigForServer(fqdn) {
+  console.log('fetching', `https://${fqdn}/ocm-provider/`);
+  const configResult = await fetch(`https://${fqdn}/ocm-provider/`);
 // const text = await configResult.text();
 // console.log({ text });
 // JSON.parse(text);
-  return { config: await configResult.json(), otherServer };
+  return { config: await configResult.json(), fqdn };
 }
 async function getServerConfigForUser(otherUser) {
-  const otherServer = await getServerForUser(otherUser);
-  return getServerConfigForServer(otherServer);
+  const fqdn = await getServerFqdnForUser(otherUser);
+  return getServerConfigForServer(fqdn);
 }
 
 async function notifyProvider(obj, notif) {
@@ -116,8 +116,8 @@ async function notifyProvider(obj, notif) {
 
 async function forwardInvite(invite) {
   console.log('forwardInvite', invite);
-  const { config, otherServer } = await getServerConfigForUser(invite);
-  console.log('discovered', config, otherServer);
+  const { config, fqdn } = await getServerConfigForUser(invite);
+  console.log('discovered', config, fqdn);
   if (!config.endPoint) {
     config.endPoint = process.env.FORCE_ENDPOINT;
   }
@@ -154,7 +154,7 @@ async function createShare(consumer) {
   // config={
   //   endPoint: 'https://example.com/'
   // };
-  const { config, otherServer } = await getServerConfigForUser(consumer);
+  const { config, fqdn } = await getServerConfigForUser(consumer);
   // console.log(config);
   if (!config.endPoint) {
     config.endPoint = process.env.FORCE_ENDPOINT;
@@ -207,8 +207,8 @@ async function createShare(consumer) {
     body,
   });
   console.log('outgoing share created!', postRes.status, await postRes.text());
-  return otherServer;
-}
+  return fqdn;
+} 
 function expectHeader(headers, name, expected) {
   if (headers[name] === expected) {
     console.log(`header ${name} OK`, expected);
@@ -237,12 +237,12 @@ async function checkSignature(bodyIn, headersIn) {
   const rx = /^keyId=\"(.*)\"\,algorithm=\"(.*)\"\,headers\=\"(.*)\",signature\=\"(.*)\"$/g;
   const parsed = rx.exec(headersIn.signature);
   console.log(parsed);
-  const sendingServer = parsed[1];
+  const fqdn = parsed[1];
   const signature = parsed[4];
-  const verified = await verify(message, signature, sendingServer);
-  console.log({ verified, sendingServer });
+  const verified = await verify(message, signature, fqdn);
+  console.log({ verified, fqdn });
   if (verified) {
-    return sendingServer;
+    return fqdn;
   }
 }
 
@@ -283,8 +283,8 @@ const server = https.createServer(HTTPS_OPTIONS, async (req, res) => {
           sendHTML(res, 'Cannot parse JSON');
         }
         if (typeof req.headers['signature'] === 'string') {
-          const signingServer = checkSignature(bodyIn, req.headers);
-          const claimedServer = getServerForUser(mostRecentShareIn.sharedBy);
+          const signingServer = await checkSignature(bodyIn, req.headers);
+          const claimedServer = await getServerFqdnForUser(mostRecentShareIn.sharedBy);
           if (signingServer !== claimedServer) {
             console.log('ALARM! Claimed server does not match signing server', claimedServer, signingServer);
           }
