@@ -36,6 +36,10 @@ const HTTPS_OPTIONS = {
   cert: fs.readFileSync(`${TLS_DIR}/${SERVER_NAME}.crt`)
 }
 
+const tokens = {
+  '123456': 'asdfgh'
+}
+
 function sendHTML(res, text) {
   res.end(`<!DOCTYPE html><html><head></head><body>${text}</body></html>`);
 }
@@ -171,7 +175,17 @@ async function createShare(consumer) {
     senderDisplayName: USER,
     shareType: 'user',
     resourceType: 'file',
-    protocol: { name: 'webdav', options: { sharedSecret: 'shareMeNot' } }
+    protocol: {
+      name: 'webdav',
+      options: {
+        code: '123456',
+        sharedSecret: 'shareMeNot'
+      },
+      webdav: {
+        code: '123456',
+        sharedSecret: 'shareMeNot'
+      }
+    }
   }
   console.log(shareSpec, shareSpec.protocol);
   if (config.endPoint.endsWith('/')) {
@@ -218,6 +232,19 @@ function expectHeader(headers, name, expected) {
 }
 function checkExpectedHeaders(received, expected, onesToCheck) {
   onesToCheck.forEach(name => expectHeader(received, name, expected[name]));
+}
+async function fetchAccessToken(tokenEndpoint, code) {
+  const tokenResult = await fetch(tokenEndpoint, {
+    method: 'POST',
+    body: [
+      `grant_type=ocm_authorization_code`,
+      `code=${code}`,
+      `client_id=${SERVER_HOST}`,
+    ].join('&')
+  });
+  const response = tokenResult.json();
+  console.log('got token response', response);
+  return response;
 }
 
 async function checkSignature(bodyIn, headersIn) {
@@ -289,9 +316,11 @@ const server = https.createServer(HTTPS_OPTIONS, async (req, res) => {
             console.log('ALARM! Claimed server does not match signing server', claimedServer, signingServer);
           }
           if (mostRecentShareIn?.protocol?.webdav?.code) {
-            console.log('code received! exchanging it for token...');
-            // const otherServerConfig = getServerConfigForServer(claimedServer);
-            // const token = fetchAccessToken(otherServerConfig.tokenEndpoint, mostRecentShareIn?.protocol?.webdav?.code);
+            console.log('code received! exchanging it for token...', mostRecentShareIn?.protocol?.webdav?.code);
+            const otherServerConfig = getServerConfigForServer(claimedServer);
+            console.log('token endpoint discovered', otherServerConfig.tokenEndpoint);
+            const token = fetchAccessToken(otherServerConfig.tokenEndpoint, mostRecentShareIn?.protocol?.webdav?.code);
+            console.log('will now use token to access webdav [TODO]', token);
           }
         } else {
           console.log('unsigned request to create share');
