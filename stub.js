@@ -154,8 +154,10 @@ async function forwardInvite(invite) {
 function getDigest(body) {
   return 'SHA-256=' + crypto.createHash('sha256').update(body).digest('base64');
 }
-async function generateSignatureHeaders(body, endPoint, target) {
+async function generateSignatureHeaders(body, endPoint, method) {
   const urlObj = new URL(endPoint);
+  const path = urlObj.pathname;
+  const target = `${method.toLowerCase()} ${path}`;
   const digest = getDigest(body);
   const headers = {
     'request-target': target,
@@ -218,7 +220,8 @@ async function createShare(consumer) {
 
   
   const body = JSON.stringify(shareSpec, null, 2);
-  const headers = await generateSignatureHeaders(body, config.endPoint, 'post /shares');
+  const sharesEndpoint = `${config.endPoint}/shares`;
+  const headers = await generateSignatureHeaders(body, sharesEndpoint, 'POST');
   headers['content-type'] = 'application/json';
   
   console.log('signature headers generated', headers);
@@ -247,7 +250,7 @@ async function fetchAccessToken(tokenEndpoint, code) {
     code,
     client_id: SERVER_HOST,
   }, null, 2);
-  const headers = await generateSignatureHeaders(body, tokenEndpoint, 'post /token');
+  const headers = await generateSignatureHeaders(body, tokenEndpoint, 'POST');
   headers['content-type'] = 'application/json';
   const tokenResult = await fetch(tokenEndpoint, {
     method: 'POST',
@@ -259,7 +262,9 @@ async function fetchAccessToken(tokenEndpoint, code) {
   return response;
 }
 
-async function checkSignature(bodyIn, headersIn, target) {
+async function checkSignature(bodyIn, headersIn, url, method) {
+  const urlObj = new URL(url);
+  const target = `${method.toLowerCase()} ${urlObj.pathname}`;
   console.log('checking signature');
   const digest = getDigest(bodyIn);
   const headers = {
@@ -294,8 +299,8 @@ const server = https.createServer(HTTPS_OPTIONS, async (req, res) => {
   });
   req.on('end', async () => {
     try {
-      if (req.url === '/token') {
-        const signingServer = await checkSignature(bodyIn, req.headers, 'post /token');
+      if (req.url === '/ocm/token') {
+        const signingServer = await checkSignature(bodyIn, req.headers, `https://${SERVER_HOST}${req.url}`, 'POST');
         console.log('token request', bodyIn, signingServer);
         let params;
         try {
@@ -341,7 +346,6 @@ const server = https.createServer(HTTPS_OPTIONS, async (req, res) => {
           enabled: true,
           apiVersion: '1.0-proposal1',
           endPoint: `${SERVER_ROOT}/ocm`,
-          tokenEndpoint: `${SERVER_ROOT}/token`,
           resourceTypes: [
             {
               name: 'file',
@@ -361,7 +365,7 @@ const server = https.createServer(HTTPS_OPTIONS, async (req, res) => {
           return;
         }
         if (typeof req.headers['signature'] === 'string') {
-          const signingServer = await checkSignature(bodyIn, req.headers, 'post /shares');
+          const signingServer = await checkSignature(bodyIn, req.headers, `https://${SERVER_HOST}${req.url}`, 'POST');
           const claimedServer = await getServerFqdnForUser(mostRecentShareIn.sharedBy);
           if (signingServer !== claimedServer) {
             console.log('ALARM! Claimed server does not match signing server', claimedServer, signingServer);
@@ -369,8 +373,10 @@ const server = https.createServer(HTTPS_OPTIONS, async (req, res) => {
           if (mostRecentShareIn?.code) {
             console.log('code received! exchanging it for token...', mostRecentShareIn?.code);
             const { config, fqdn } = await getServerConfigForServer(claimedServer);
-            console.log('token endpoint discovered', config.tokenEndpoint);
-            const token = await fetchAccessToken(config.tokenEndpoint, mostRecentShareIn?.code);
+            const urlObj = new URL(config.endPoint, `https://${fqdn}`);
+            const tokenEndpoint = `${urlObj.href}/token`;
+            console.log('token endpoint discovered', tokenEndpoint);
+            const token = await fetchAccessToken(tokenEndpoint, mostRecentShareIn?.code);
             console.log('will now use token to access webdav', token);
             const result = await fetch(mostRecentShareIn?.protocol?.webdav?.URI, {
               headers: {
