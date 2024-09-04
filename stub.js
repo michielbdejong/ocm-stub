@@ -105,10 +105,10 @@ async function getServerConfigForUser(otherUser) {
 
 async function notifyProvider(obj, notif) {
   console.log('notifyProvider', obj, notif);
-  // FIXME: reva sets no `sharedBy` and no `sender`
+  // FIXME: reva sets no `sender` and no `sender`
   // and sets `owner` to a user opaqueId only (e.g. obj.owner: '4c510ada-c86b-4815-8820-42cdf82c3d51').
   // what we ultimately need when a share comes from reva is obj.meshProvider, e.g.: 'revad1.docker'.
-  const { config } = await getServerConfigForUser(obj.sharedBy || obj.sender || /* obj.owner || */ `${obj.owner}@${obj.meshProvider}`);
+  const { config } = await getServerConfigForUser(obj.sender || obj.sender || /* obj.owner || */ `${obj.owner}@${obj.meshProvider}`);
   if (config.endPoint.substr(-1) == '/') {
     config.endPoint = config.endPoint.substring(0, config.endPoint.length - 1);
   }
@@ -197,7 +197,7 @@ async function createShare(consumer) {
     meshProvider: MESH_PROVIDER,
     owner: `${USER}@${SERVER_HOST}`,
     ownerDisplayName: USER,
-    sharedBy: `${USER}@${SERVER_HOST}`,
+    sender: `${USER}@${SERVER_HOST}`,
     senderDisplayName: USER,
     shareType: 'user',
     resourceType: 'file',
@@ -366,7 +366,7 @@ const server = https.createServer(HTTPS_OPTIONS, async (req, res) => {
         }
         if (typeof req.headers['signature'] === 'string') {
           const signingServer = await checkSignature(bodyIn, req.headers, `https://${SERVER_HOST}${req.url}`, 'POST');
-          const claimedServer = await getServerFqdnForUser(mostRecentShareIn.sharedBy);
+          const claimedServer = await getServerFqdnForUser(mostRecentShareIn.sender);
           if (signingServer !== claimedServer) {
             console.log('ALARM! Claimed server does not match signing server', claimedServer, signingServer);
           }
@@ -398,8 +398,8 @@ const server = https.createServer(HTTPS_OPTIONS, async (req, res) => {
         //   providerId:202,
         //   owner: "alice@https:\/\/nc1.pdsinterop.net\/",
         //   ownerDisplayName: "alice",
-        //   sharedBy: "alice@https:\/\/nc1.pdsinterop.net\/",
-        //   sharedByDisplayName":"alice",
+        //   sender: "alice@https:\/\/nc1.pdsinterop.net\/",
+        //   senderDisplayName":"alice",
         //   "protocol":{
         //     "name":"webdav",
         //     "options":{
