@@ -541,4 +541,5 @@ const server = https.createServer(HTTPS_OPTIONS, async (req, res) => {
   });
 });
 server.listen(443);
-console.log(`Browse to https://localhost or https://${SERVER_HOST}`);
+console.log(`Browse to https://${SERVER_HOST}/ocm-provider/ or https://${SERVER_HOST}/shareWith?bob@${SERVER_HOST}`);
+
