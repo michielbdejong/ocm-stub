@@ -39,6 +39,9 @@ const HTTPS_OPTIONS = {
 const grants = {
   'localhost': {
     '123456': 'asdfgh'
+  },
+  'ocmstub2.docker': {
+    '123456': 'asdfgh'
   }
 }
 
@@ -312,12 +315,12 @@ const server = https.createServer(HTTPS_OPTIONS, async (req, res) => {
         }
         if (typeof grants[params.client_id] !== 'object') {
           res.writeHead(403);
-          sendHTML(res, `no grants found for client ${client_id}`);
+          sendHTML(res, `no grants found for client ${params.client_id}`);
           return;
         }
         if (typeof grants[params.client_id][params.code] !== 'string') {
           res.writeHead(403);
-          sendHTML(res, `grant ${params.code} not found for client ${client_id}`);
+          sendHTML(res, `grant ${params.code} not found for client ${params.client_id}`);
           return;
         }
         const token = grants[params.code];
