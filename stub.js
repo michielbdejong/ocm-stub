@@ -40,9 +40,18 @@ const grants = {
   'localhost': {
     '123456': 'asdfgh'
   },
-  'ocmstub2.docker': {
+  'placeholder_1.dev': {
     '123456': 'asdfgh'
-  }
+  },
+  'placeholder_2.dev': {
+    '123456': 'asdfgh'
+  },
+  'placeholder_3.dev': {
+    '123456': 'asdfgh'
+  },
+  'placeholder_4.dev': {
+    '123456': 'asdfgh'
+  },
 }
 
 function sendHTML(res, text) {
