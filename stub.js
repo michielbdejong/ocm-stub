@@ -40,7 +40,34 @@ const grants = {
   'localhost': {
     '123456': 'asdfgh'
   },
+  'ocmstub1.docker': {
+    '123456': 'asdfgh'
+  },
   'ocmstub2.docker': {
+    '123456': 'asdfgh'
+  },
+  'nextcloud1.docker': {
+    '123456': 'asdfgh'
+  },
+  'nextcloud2.docker': {
+    '123456': 'asdfgh'
+  },
+  'owncloud1.docker': {
+    '123456': 'asdfgh'
+  },
+  'owncloud2.docker': {
+    '123456': 'asdfgh'
+  },
+  'ocis1.docker': {
+    '123456': 'asdfgh'
+  },
+  'ocis2.docker': {
+    '123456': 'asdfgh'
+  },
+  'cernbox1.docker': {
+    '123456': 'asdfgh'
+  },
+  'cernbox2.docker': {
     '123456': 'asdfgh'
   }
 }
