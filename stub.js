@@ -386,27 +386,27 @@ const server = https.createServer(HTTPS_OPTIONS, async (req, res) => {
         }));
       } else if ((req.url === '/webdav-api/') && (req.method === 'PROPFIND')) {
         console.log('PROPFIND', req.headers['authorization']);
-        if (req.headers['authorization'] === `Bearer asdfgh`) {
+        // if (req.headers['authorization'] === `Bearer asdfgh`) {
           res.setHeader('Content-Type', 'application/xml; charset=utf-8');
           res.writeHead(207);
           res.end(PROPFIND_RESPONSE);
-        } else if (typeof req.headers['authorization'] === 'string') {
-          res.writeHead(403);
-          res.end('No access, sorry');
-        } else {
-          res.writeHead(401);
-          res.end('Please use a short-lived bearer for this API. You can exchange the code from the share at the token endpoint using httpsig');
-        }
+        // } else if (typeof req.headers['authorization'] === 'string') {
+        //   res.writeHead(403);
+        //   res.end('No access, sorry\n');
+        // } else {
+        //   res.writeHead(401);
+        //   res.end('Please use a short-lived bearer for this API. You can exchange the code from the share at the token endpoint using httpsig\n');
+        // }
       } else if (req.url === '/webdav-api/file.txt') {
         console.log('API access', req.headers['authorization']);
         if (req.headers['authorization'] === `Bearer asdfgh`) {
           res.end('The content of the file, well done!');
         } else if (typeof req.headers['authorization'] === 'string') {
           res.writeHead(403);
-          res.end('No access, sorry');
+          res.end('No access, sorry\n');
         } else {
           res.writeHead(401);
-          res.end('Please use a short-lived bearer for this API. You can exchange the code from the share at the token endpoint using httpsig');
+          res.end('Please use a short-lived bearer for this API. You can exchange the code from the share at the token endpoint using httpsig\n');
         }
     } else if (req.url === '/ocm-provider/' || req.url === '/.well-known/ocm') {
         console.log(`yes ${req.url}`);
