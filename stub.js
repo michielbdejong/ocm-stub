@@ -26,6 +26,32 @@ const USER = `einstein`;
 const PROVIDER_ID = SERVER_HOST;
 const MESH_PROVIDER = SERVER_HOST;
 
+const PROPFIND_RESPONSE = `\
+<?xml version="1.0"?>\
+<d:multistatus xmlns:d="DAV:" xmlns:s="http://sabredav.org/ns" xmlns:oc="http://owncloud.org/ns" xmlns:nc="http://nextcloud.org/ns">\
+  <d:response>\
+    <d:href>/webdav-api/</d:href>\
+     <d:propstat>\
+      <d:prop>\
+        <d:getlastmodified>Tue, 07 Jan 2025 08:26:30 GMT</d:getlastmodified>\
+        <d:getcontentlength>164</d:getcontentlength>\
+        <d:getcontenttype>text/plain</d:getcontenttype>\
+        <oc:permissions>RGNVW</oc:permissions>\
+        <d:resourcetype/>\
+        <d:getetag>&quot;b134a68c554798adf769917887321c83&quot;</d:getetag>\
+      </d:prop>\
+      <d:status>HTTP/1.1 200 OK</d:status>\
+    </d:propstat>\
+    <d:propstat>\
+      <d:prop>\
+        <x1:share-permissions xmlns:x1="http://open-collaboration-services.org/ns"/>\
+        <d:quota-available-bytes/>\
+      </d:prop>\
+      <d:status>HTTP/1.1 404 Not Found</d:status>\
+    </d:propstat>\
+  </d:response>\
+</d:multistatus>\
+`;
 // const HTTPS_OPTIONS = {
 //   key: fs.readFileSync(`/etc/letsencrypt/live/${SERVER_HOST}/privkey.pem`),
 //   cert: fs.readFileSync(`/etc/letsencrypt/live/${SERVER_HOST}/cert.pem`),
@@ -239,7 +265,7 @@ async function createShare(consumer) {
       },
       webdav: {
         sharedSecret: 'shareMeNot',
-        URI: 'https://localhost/webdav/file.txt'
+        URI: 'https://localhost/webdav-api/file.txt'
       }
     }
   }
@@ -358,7 +384,20 @@ const server = https.createServer(HTTPS_OPTIONS, async (req, res) => {
           expires_in: 3600,
           refresh_token: 'qwertyuiop',
         }));
-      } else if (req.url === '/webdav/file.txt') {
+      } else if ((req.url === '/webdav-api/') && (req.method === 'PROPFIND')) {
+        console.log('PROPFIND', req.headers['authorization']);
+        if (req.headers['authorization'] === `Bearer asdfgh`) {
+          res.setHeader('Content-Type', 'application/xml; charset=utf-8');
+          res.writeHead(207);
+          res.end(PROPFIND_RESPONSE);
+        } else if (typeof req.headers['authorization'] === 'string') {
+          res.writeHead(403);
+          res.end('No access, sorry');
+        } else {
+          res.writeHead(401);
+          res.end('Please use a short-lived bearer for this API. You can exchange the code from the share at the token endpoint using httpsig');
+        }
+      } else if (req.url === '/webdav-api/file.txt') {
         console.log('API access', req.headers['authorization']);
         if (req.headers['authorization'] === `Bearer asdfgh`) {
           res.end('The content of the file, well done!');
@@ -369,8 +408,8 @@ const server = https.createServer(HTTPS_OPTIONS, async (req, res) => {
           res.writeHead(401);
           res.end('Please use a short-lived bearer for this API. You can exchange the code from the share at the token endpoint using httpsig');
         }
-    } else if (req.url === '/ocm-provider/') {
-        console.log('yes /ocm-provider/');
+    } else if (req.url === '/ocm-provider/' || req.url === '/.well-known/ocm') {
+        console.log(`yes ${req.url}`);
         res.setHeader('content-type', 'application/json');
         res.end(JSON.stringify({
           enabled: true,
@@ -380,7 +419,7 @@ const server = https.createServer(HTTPS_OPTIONS, async (req, res) => {
             {
               name: 'file',
               shareTypes: [ 'user', 'group' ],
-              protocols: { webdav: '/webdav/' }
+              protocols: { webdav: '/webdav-api/' }
             }
           ],
           publicKey
