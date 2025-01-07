@@ -384,7 +384,7 @@ const server = https.createServer(HTTPS_OPTIONS, async (req, res) => {
           expires_in: 3600,
           refresh_token: 'qwertyuiop',
         }));
-      } else if ((req.url === '/webdav-api/') && (req.method === 'PROPFIND')) {
+      } else if (((req.url === '/webdav-api/') || (req.url === '/public.php/webdav/')) && (req.method === 'PROPFIND')) {
         console.log('PROPFIND', req.headers['authorization']);
         // if (req.headers['authorization'] === `Bearer asdfgh`) {
           res.setHeader('Content-Type', 'application/xml; charset=utf-8');
